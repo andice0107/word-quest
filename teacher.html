@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老師設定・換題目</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap">
+<script src="vendor/xlsx.full.min.js"></script>
+<style>
+:root{--gold:#e8c15a;--ink:#1b1433;--ghost:#f6f1ff;--good:#7ee2a8;--bad:#ff8a80}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;color:var(--ghost);
+  background:linear-gradient(rgba(20,14,40,.82),rgba(20,14,40,.92)),url(img/title.webp) center/cover fixed #1f1838;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 16px 60px}
+h1{font-family:'Noto Serif TC',serif;color:#ffe9a8;margin:0 0 4px;font-size:32px}
+.sub{opacity:.8;margin:0 0 20px}
+.step{background:rgba(30,22,60,.92);border:1.5px solid rgba(232,193,90,.45);border-radius:18px;padding:18px 20px;margin-bottom:16px}
+.step h2{margin:0 0 8px;font-size:20px;color:#ffe9a8;font-family:'Noto Serif TC',serif}
+.step h2 .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--ink);margin-right:8px;font-size:16px}
+.step p{margin:6px 0}
+button,.btn{font-family:inherit;font-size:17px;font-weight:700;border:0;border-radius:999px;padding:11px 22px;cursor:pointer;
+  background:linear-gradient(180deg,#ffe49a,#e8c15a 45%,#b88a2a);color:var(--ink);box-shadow:0 4px 0 #7d5a14;text-decoration:none;display:inline-block;margin:4px 6px 4px 0}
+button.ghost{background:transparent;color:var(--gold);border:1.5px solid var(--gold);box-shadow:none}
+button:disabled{opacity:.4;cursor:default}
+input[type=file]{font-size:16px;color:var(--ghost);margin:6px 0}
+#status{white-space:pre-wrap}
+.ok{color:var(--good)} .err{color:var(--bad)}
+.room{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 12px;margin:6px 0;font-size:15px}
+textarea{width:100%;height:84px;font-size:13px;border-radius:10px;padding:8px;background:#120c26;color:var(--ghost);border:1px solid #4b3a7a}
+.now{display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(107,75,184,.6);font-size:14px}
+small{opacity:.75}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>老師設定・換題目</h1>
+  <p class="sub">用 Excel 題本換成你自己的語詞題目。故事、房間、機關也都可以改。<br>
+  目前使用：<span class="now" id="now"></span></p>
+
+  <div class="step">
+    <h2><span class="n">1</span>下載題本範本</h2>
+    <p>範本裡已經填好「目前的題目」，你只要改想改的格子就好。每個工作表最上面都有說明。</p>
+    <button id="dl">下載 Excel 題本</button>
+  </div>
+
+  <div class="step">
+    <h2><span class="n">2</span>上傳改好的題本</h2>
+    <input type="file" id="file" accept=".xlsx,.xls">
+    <div id="status"></div>
+    <div id="preview"></div>
+  </div>
+
+  <div class="step">
+    <h2><span class="n">3</span>開始使用</h2>
+    <p><b>只在這台電腦／平板玩：</b>按「套用到這台裝置」，再回遊戲就是新題目。</p>
+    <button id="apply" disabled>套用到這台裝置</button>
+    <p style="margin-top:12px"><b>給全班用（每台裝置都要新題目）：</b>按「產生分享連結」，把連結貼到 Google Classroom 或 QR code，學生點開一次就會自動換成你的題目。</p>
+    <button id="share" disabled>產生分享連結</button>
+    <textarea id="link" class="hidden" readonly style="display:none"></textarea>
+    <button id="copy" class="ghost" style="display:none">複製連結</button>
+  </div>
+
+  <div class="step">
+    <h2>其他</h2>
+    <button class="ghost" id="restore">這台裝置還原成原本的題目</button>
+    <a class="btn" href="index.html">回到遊戲</a>
+  </div>
+</div>
+<script src="share.js"></script>
+<script src="content.js"></script>
+<script>
+(function () {
+  var LS = 'wordQuestCustomContent', D = window.DEFAULT_CONTENT, pending = null;
+  function $(id) { return document.getElementById(id); }
+  function current() { try { var c = JSON.parse(localStorage.getItem(LS) || 'null'); if (c && c.rooms) return c; } catch (e) {} return D; }
+  function showNow() { var c = current(); $('now').textContent = (c === D ? '原本題目：' : '自訂題目：') + c.title; }
+  showNow();
+
+  var SPRITES = ['portrait', 'mirror', 'pumpkin', 'book', 'chest', 'scroll', 'coins', 'potion', 'crystal', 'candle', 'hourglass', 'cauldron', 'lantern', 'ghost', 'raven', 'clock', 'wizard', 'cat'];
+  var SPRITE_ZH = { portrait: '畫像', mirror: '魔鏡', pumpkin: '南瓜燈', book: '書', chest: '寶箱', scroll: '卷軸', coins: '金幣', potion: '藥水', crystal: '水晶球', candle: '燭臺', hourglass: '沙漏', cauldron: '大鍋', lantern: '燈籠', ghost: '幽靈', raven: '烏鴉', clock: '大鐘', wizard: '南瓜巫師', cat: '黑貓' };
+  var ZH_SPRITE = {}; Object.keys(SPRITE_ZH).forEach(function (k) { ZH_SPRITE[SPRITE_ZH[k]] = k; ZH_SPRITE[k] = k; });
+  var PT = { sequence: '順序', code: '密碼', choose: '選擇' }, TP = { '順序': 'sequence', '密碼': 'code', '選擇': 'choose', sequence: 'sequence', code: 'code', choose: 'choose' };
+  var Q_HEAD = ['關卡(1-6)', '物品名稱', '圖示', '語詞', '題型代號', '說話的角色', '題目', '選項1', '選項2', '選項3', '選項4', '正確答案(1-4)', '提示1(答錯一次)', '提示2(答錯兩次)', '解釋與例句', '答對得到的線索', '出現條件(本關答對幾題後才出現)'];
+  var R_HEAD = ['關卡(1-6)', '房間名稱', '簡稱', '符文', '開場介紹', '黑貓提示', '機關名稱', '機關類型', '機關說明', '機關項目(文字|名稱|顏色，用；分隔)', '機關答案', '機關提示1', '機關提示2', '機關解答說明', '解開後的文字'];
+
+  /* ---------- 匯出 ---------- */
+  $('dl').onclick = function () {
+    var c = current(), wb = XLSX.utils.book_new();
+    var help = [['語詞闖關遊戲 題本說明'], [''],
+      ['1. 「題目」工作表：每一列是一道題。每個關卡要有 6 題（也可以 3～8 題）。'],
+      ['2. 「題型代號」：' + Object.keys(c.typeNames).map(function (k) { return k + '=' + c.typeNames[k]; }).join('，') + '。只影響題目上方顯示的小字。'],
+      ['3. 「正確答案」填 1、2、3 或 4，對應選項1～4。選項可以只填 3 個。'],
+      ['4. 「圖示」可以填：' + SPRITES.map(function (s) { return SPRITE_ZH[s]; }).join('、') + '。'],
+      ['5. 「出現條件」填 0 表示一開始就出現；填 2 表示這一關答對 2 題後，迷霧散開才出現。'],
+      ['6. 「答對得到的線索」會記到線索本，學生要用這些線索解開每關最後的機關，所以線索要和機關答案對得上。'],
+      ['7. 「關卡」工作表：機關類型可填 順序／密碼／選擇。'],
+      ['   順序：機關項目照「正確順序」填，例如：月|明月|#f4e9c1；蝠|蝙蝠|#9b7fd4。遊戲會自動打亂。機關答案可留白。'],
+      ['   密碼：機關答案填數字，例如 847。機關項目留白。'],
+      ['   選擇：機關項目填幾個選項，機關答案填正確的是第幾個（1、2、3…）。'],
+      ['8. 「故事」工作表：開場信可以有好幾行。'],
+      ['9. 改好後存檔，回到老師設定頁面上傳。']];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(help), '說明');
+    var q = [Q_HEAD];
+    c.rooms.forEach(function (r, i) { r.objects.forEach(function (o) {
+      var op = o.q.options; q.push([i + 1, o.name, SPRITE_ZH[o.sprite] || o.sprite, o.word, o.q.type, o.q.speaker, o.q.prompt, op[0] || '', op[1] || '', op[2] || '', op[3] || '', o.q.answer + 1, o.q.hint1, o.q.hint2, o.q.explain, o.clue, o.unlock || 0]);
+    }); });
+    var ws = XLSX.utils.aoa_to_sheet(q); ws['!cols'] = [6, 16, 8, 12, 6, 12, 60, 18, 18, 18, 18, 8, 30, 30, 50, 40, 10].map(function (w) { return { wch: w }; });
+    XLSX.utils.book_append_sheet(wb, ws, '題目');
+    var rr = [R_HEAD];
+    c.rooms.forEach(function (r, i) { var p = r.puzzle;
+      var items = (p.items || []).map(function (it) { return it.label + '|' + it.name + '|' + it.color; }).join('；');
+      var ans = p.type === 'code' ? String(p.answer) : p.type === 'choose' ? p.answer + 1 : '';
+      if (p.type === 'sequence') items = p.answer.map(function (k) { var it = p.items[k]; return it.label + '|' + it.name + '|' + it.color; }).join('；');
+      rr.push([i + 1, r.name, r.short, r.rune, r.intro, r.catTip, p.name, PT[p.type], p.prompt, items, ans, p.hint1, p.hint2, p.explain, p.success]);
+    });
+    ws = XLSX.utils.aoa_to_sheet(rr); ws['!cols'] = [6, 20, 8, 6, 50, 40, 12, 8, 50, 50, 8, 30, 30, 40, 40].map(function (w) { return { wch: w }; });
+    XLSX.utils.book_append_sheet(wb, ws, '關卡');
+    var st = c.story || {}, g = c.gate || {};
+    var s = [['項目', '內容'], ['遊戲名稱', c.title], ['大標題', c.titleMain || ''], ['副標題', c.titleSub || ''], ['首頁說明', c.instruction], ['開始按鈕', c.startButton || '']];
+    (st.letter || []).forEach(function (l) { s.push(['開場信', l]); });
+    s.push(['署名', st.signature || ''], ['關門', st.slam || ''], ['黑貓開場', st.cat || ''], ['大門介紹', g.intro || ''], ['大門說明', g.prompt || ''], ['大門提示', g.hint || ''], ['大門成功', g.success || ''], ['結局標題', c.endTitle || '']);
+    ws = XLSX.utils.aoa_to_sheet(s); ws['!cols'] = [{ wch: 12 }, { wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, ws, '故事');
+    XLSX.writeFile(wb, '語詞闖關遊戲_題本.xlsx');
+  };
+
+  /* ---------- 匯入 ---------- */
+  function str(v) { return v == null ? '' : String(v).trim(); }
+  $('file').onchange = function (e) {
+    var f = e.target.files[0]; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try { var r = parse(XLSX.read(rd.result, { type: 'array' })); report(r); }
+      catch (err) { $('status').innerHTML = '<span class="err">讀取失敗：' + err.message + '</span>'; }
+    };
+    rd.readAsArrayBuffer(f);
+  };
+  function rows(wb, name) { var ws = wb.Sheets[name]; if (!ws) throw new Error('找不到「' + name + '」工作表'); return XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }).slice(1); }
+  function parse(wb) {
+    var errs = [], warns = [], base = JSON.parse(JSON.stringify(D));
+    var c = { typeNames: base.typeNames, story: {}, gate: {}, rooms: [] };
+    var srows = rows(wb, '故事'), letter = [];
+    var map = {};
+    srows.forEach(function (r) { var k = str(r[0]), v = str(r[1]); if (!k) return; if (k === '開場信') { if (v) letter.push(v); } else map[k] = v; });
+    c.title = map['遊戲名稱'] || '語詞闖關遊戲'; c.titleMain = map['大標題'] || c.title; c.titleSub = map['副標題'] || '';
+    c.instruction = map['首頁說明'] || ''; c.startButton = map['開始按鈕'] || '開始冒險';
+    c.story = { letter: letter, signature: map['署名'] || '', slam: map['關門'] || '', cat: map['黑貓開場'] || '' };
+    c.gate = { intro: map['大門介紹'] || '', prompt: map['大門說明'] || '', hint: map['大門提示'] || '', success: map['大門成功'] || '' };
+    c.endTitle = map['結局標題'] || '闖關成功！';
+    rows(wb, '關卡').forEach(function (r, i) {
+      var n = parseInt(r[0], 10); if (!n) return;
+      if (n < 1 || n > 6) { errs.push('「關卡」第 ' + (i + 2) + ' 列：關卡要填 1～6'); return; }
+      var type = TP[str(r[7])]; if (!type) { errs.push('第 ' + n + ' 關：機關類型要填 順序／密碼／選擇'); type = 'sequence'; }
+      var items = str(r[9]).split(/[;；\n]/).map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) { var p = x.split(/[|｜]/); return { label: str(p[0]), name: str(p[1] || p[0]), color: str(p[2]) || '#e8c15a' }; });
+      var p = { name: str(r[6]) || '最終機關', type: type, prompt: str(r[8]), items: items, hint1: str(r[11]), hint2: str(r[12]), explain: str(r[13]), success: str(r[14]) };
+      if (type === 'sequence') { if (items.length < 2) errs.push('第 ' + n + ' 關：順序機關至少要 2 個項目'); p.answer = items.map(function (_, k) { return k; }); }
+      else if (type === 'code') { p.answer = str(r[10]).replace(/\D/g, ''); if (!p.answer) errs.push('第 ' + n + ' 關：密碼機關要填數字答案'); }
+      else { p.answer = parseInt(r[10], 10) - 1; if (!(p.answer >= 0 && p.answer < items.length)) errs.push('第 ' + n + ' 關：選擇機關的答案要填 1～' + items.length); }
+      c.rooms[n - 1] = { name: str(r[1]) || ('第' + n + '關'), short: str(r[2]) || ('第' + n + '關'), rune: str(r[3]) || ('符' + n), bg: 'room' + n, intro: str(r[4]), catTip: str(r[5]), objects: [], puzzle: p };
+    });
+    rows(wb, '題目').forEach(function (r, i) {
+      var line = '「題目」第 ' + (i + 2) + ' 列', n = parseInt(r[0], 10);
+      if (!str(r[6]) && !n) return;
+      if (!n || !c.rooms[n - 1]) { errs.push(line + '：關卡號碼不對'); return; }
+      var opts = [r[7], r[8], r[9], r[10]].map(str).filter(Boolean);
+      var ans = parseInt(r[11], 10) - 1;
+      if (opts.length < 2) errs.push(line + '：至少要 2 個選項');
+      if (!(ans >= 0 && ans < opts.length)) errs.push(line + '：正確答案要填 1～' + opts.length);
+      var sp = ZH_SPRITE[str(r[2])]; if (!sp) { if (str(r[2])) warns.push(line + '：圖示「' + str(r[2]) + '」不認得，先用「書」'); sp = 'book'; }
+      var word = str(r[3]) || opts[ans] || '';
+      c.rooms[n - 1].objects.push({ name: str(r[1]) || word, sprite: sp, tint: 0, unlock: parseInt(r[16], 10) || 0, word: word,
+        q: { type: str(r[4]).toUpperCase(), speaker: str(r[5]) || str(r[1]), prompt: str(r[6]), options: opts, answer: ans, hint1: str(r[12]), hint2: str(r[13]), explain: str(r[14]) },
+        clue: str(r[15]) });
+    });
+    c.rooms = c.rooms.filter(Boolean);
+    if (!c.rooms.length) errs.push('「關卡」工作表沒有任何關卡');
+    c.rooms.forEach(function (rm, i) {
+      if (!rm.objects.length) errs.push('第 ' + (i + 1) + ' 關沒有任何題目');
+      if (rm.objects.length > 8) errs.push('第 ' + (i + 1) + ' 關最多 8 題（現在 ' + rm.objects.length + ' 題）');
+      var max = rm.objects.length - 1;
+      rm.objects.forEach(function (o) { if (o.unlock > max) { warns.push('「' + o.name + '」出現條件太大，已改成 ' + max); o.unlock = max; } });
+      var seen = {}; rm.objects.forEach(function (o) { var t = o.tint; while (seen[o.sprite + t]) t += 70; o.tint = t % 360; seen[o.sprite + o.tint] = 1; });
+    });
+    return { content: c, errs: errs, warns: warns };
+  }
+  function report(r) {
+    var c = r.content, h = '';
+    if (r.errs.length) h += '<p class="err">有 ' + r.errs.length + ' 個地方要修正，修好再上傳：</p><ul class="err"><li>' + r.errs.join('</li><li>') + '</li></ul>';
+    else h += '<p class="ok">讀取成功！《' + c.title + '》共 ' + c.rooms.length + ' 關、' + c.rooms.reduce(function (s, x) { return s + x.objects.length; }, 0) + ' 題。</p>';
+    if (r.warns.length) h += '<ul><li>' + r.warns.join('</li><li>') + '</li></ul>';
+    $('status').innerHTML = h;
+    $('preview').innerHTML = r.errs.length ? '' : c.rooms.map(function (rm, i) { return '<div class="room">第 ' + (i + 1) + ' 關　' + esc(rm.name) + '（' + rm.objects.length + ' 題）：' + rm.objects.map(function (o) { return esc(o.word); }).join('、') + '<br><small>機關：' + esc(rm.puzzle.name) + '（' + PT[rm.puzzle.type] + '）</small></div>'; }).join('');
+    pending = r.errs.length ? null : c;
+    $('apply').disabled = $('share').disabled = !pending;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
+  $('apply').onclick = function () { localStorage.setItem(LS, JSON.stringify(pending)); showNow(); alert('已套用！回到遊戲就是新題目。'); };
+  $('share').onclick = async function () {
+    var t = await WQShare.encode(pending), url = location.href.replace(/teacher\.html.*$/, '') + 'index.html#q=' + t;
+    var ta = $('link'); ta.value = url; ta.style.display = 'block'; $('copy').style.display = 'inline-block';
+  };
+  $('copy').onclick = function () { var ta = $('link'); ta.select(); navigator.clipboard ? navigator.clipboard.writeText(ta.value).then(function () { alert('已複製連結'); }) : document.execCommand('copy'); };
+  $('restore').onclick = function () { if (confirm('確定要把這台裝置還原成原本的題目嗎？')) { localStorage.removeItem(LS); showNow(); alert('已還原。'); } };
+})();
+</script>
+</body>
+</html>
