@@ -22,6 +22,7 @@
   function rankOf(p) { return ranked().indexOf(p) + 1; }
 
   function newAdventure() {
+    G.early = null;
     var used = SET.repeat === 'norepeat' ? G.used : [];
     if (used.length >= ALLQ) { used = G.used = []; }
     var keys = WQSettings.draw(C, SET.drawCount, used);
@@ -65,7 +66,7 @@
       }),
       merchant: G.merchant ? { stock: G.merchant.stock, done: Object.keys(G.merchant.done) } : null,
       turn: G.turn ? { order: G.turn.order, idx: G.turn.idx } : null,
-      effect: G.effect, fairy: G.fairy && G.fairy.shown ? G.fairy : null, ultimate: G.ultimate,
+      effect: G.effect, fairy: G.fairy && G.fairy.shown ? G.fairy : null, ultimate: G.ultimate, early: !!G.early,
       settings: { qTimer: SET.qTimer, qSeconds: SET.qSeconds, repeat: SET.repeat } };
   }
 
@@ -694,11 +695,11 @@
   }
   function renderEnd() {
     setBg('gate'); var s = stage(), w = el('div', 'scene'), rk = ranked();
-    w.appendChild(el('div', 'h-title', G.ultimate ? '🏆 終極破關！所有咒語都找回來了！' : (C.endTitle || '闖關成功！')));
+    w.appendChild(el('div', 'h-title', G.ultimate ? '🏆 終極破關！所有咒語都找回來了！' : (G.early ? '🚪 冒險暫停在這裡！看看目前的名次' : (C.endTitle || '闖關成功！'))));
     w.appendChild(podium(rk.slice(0, 3)));
     var info = el('div', 'set-chips');
     if (SET.totalTimer) info.appendChild(el('span', '', '過關總時間 ' + fmt(G.elapsed)));
-    info.appendChild(el('span', '', '共 ' + G.seq.length + ' 關、' + list().length + ' 位勇者'));
+    info.appendChild(el('span', '', (G.early ? '完成 ' + G.early.done + ' / ' + G.early.total + ' 關' : '共 ' + G.seq.length + ' 關') + '、' + list().length + ' 位勇者'));
     var allC = 0, allN = 0; list().forEach(function (p) { allC += p.correct; allN += p.correct + p.wrong; }); info.appendChild(el('span', '', '全體答對率 ' + (allN ? Math.round(allC / allN * 100) : 0) + '%'));
     w.appendChild(info);
     var t = el('table', 't'); t.style.maxWidth = '760px';
@@ -726,6 +727,16 @@
   var logTab = 'sum', logQ = -1;
   function openLog() { $('h-log').classList.remove('hidden'); renderLog(); }
   $('h-logbtn').addEventListener('click', function () { WQSfx.on(); openLog(); });
+  /* 快下課：直接結束冒險，用目前分數排出名次（不存檔） */
+  $('h-endnow').addEventListener('click', function () {
+    WQSfx.on();
+    if (G.phase === 'lobby' || G.phase === 'end') return alert(G.phase === 'lobby' ? '冒險還沒開始。' : '冒險已經結束了。');
+    if (!confirm('要直接結束這段冒險嗎？\n會用目前的分數排出第 1、2、3 名，沒做完的題目就不做了。')) return;
+    clearTimeout(doneT); closeMonitor(); G.timer = null; G.paused = false; $('h-pause').textContent = '⏸ 暫停'; $('h-pause').classList.remove('on');
+    G.merchant = null; G.effect = null; G.turn = null; G.fairy = null; G.queue = []; G.early = { done: Math.max(0, G.qi + (G.phase === 'question' || G.phase === 'grade' ? 0 : 1)), total: G.seq.length };
+    if (SET.repeat === 'norepeat') { G.seq.slice(0, G.qi + 1).forEach(function (it) { if (G.used.indexOf(it.key) < 0) G.used.push(it.key); }); G.ultimate = G.used.length >= ALLQ; }
+    G.phase = 'end'; render(); push(); WQSfx.play('fanfare'); confetti();
+  });
   $('log-close').addEventListener('click', function () { $('h-log').classList.add('hidden'); });
   $('tab-sum').addEventListener('click', function () { logTab = 'sum'; renderLog(); });
   $('tab-q').addEventListener('click', function () { logTab = 'q'; renderLog(); });

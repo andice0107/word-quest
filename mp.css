@@ -302,3 +302,4 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 /* 造句分數級距 */
 .levels{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
 .levels button{min-width:44px;padding:5px 7px}
+.hbtn.danger{border-color:#ff8a80;color:#ffc2bb}

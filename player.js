@@ -372,7 +372,7 @@
   }
   function buildEnd(c) {
     var rk = S.players.slice().sort(function (a, b) { return a.rank - b.rank; });
-    c.appendChild(el('h2', '', S.ultimate ? '🏆 終極破關！' : '🎉 闖關成功！'));
+    c.appendChild(el('h2', '', S.ultimate ? '🏆 終極破關！' : (S.early ? '🚪 冒險結束！看看目前的名次' : '🎉 闖關成功！')));
     var pd = el('div', 'podium mini-pod');
     [1, 0, 2].forEach(function (i) { var p = rk[i]; if (!p) return; var d = el('div', 'pod p' + (i + 1)); d.appendChild(WQPixel.img(p.seed, p.g)); d.appendChild(el('div', 'nm', p.name)); d.appendChild(el('div', 'blk', String(i + 1))); pd.appendChild(d); });
     c.appendChild(pd);
