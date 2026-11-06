@@ -43,15 +43,28 @@ window.WQSettings = (function () {
     return sortKeys(shuffle(pool).slice(0, n));
   }
   var UNLOCK = [0, 0, 0, 2, 2, 4];
-  /* 依抽到的題目重新組成房間（保留原房間的故事、背景、機關） */
-  function buildRooms(C, keys) {
-    var map = {}; keys.forEach(function (k) { var p = k.split('-'); (map[p[0]] = map[p[0]] || []).push(+p[1]); });
+  function copyObj(C, k) { var p = k.split('-'), o = JSON.parse(JSON.stringify(C.rooms[+p[0]].objects[+p[1]])); o.key = k; prepQ(o.q); return o; }
+  /* 依抽到的題目組成房間。
+     單人（預設）：題目留在原本的房間（每關最後的機關要用這個房間的線索），房間裡的順序隨機。
+     mix（多人）：全部題目完全打亂，再依序分配到房間。 */
+  function buildRooms(C, keys, opts) {
     var out = [];
+    if (opts && opts.mix) {
+      var ks = shuffle(keys), nr = Math.max(1, Math.min(C.rooms.length, Math.ceil(ks.length / 6))), at = 0;
+      for (var ri = 0; ri < nr; ri++) {
+        var cnt = Math.floor(ks.length / nr) + (ri < ks.length % nr ? 1 : 0);
+        var room = JSON.parse(JSON.stringify(C.rooms[ri]));
+        room.objects = ks.slice(at, at + cnt).map(function (k, n) { var o = copyObj(C, k); o.unlock = Math.min(UNLOCK[n] != null ? UNLOCK[n] : 4, n); return o; });
+        room.origIndex = ri; at += cnt; out.push(room);
+      }
+      return out;
+    }
+    var map = {}; keys.forEach(function (k) { var p = k.split('-'); (map[p[0]] = map[p[0]] || []).push(+p[1]); });
     C.rooms.forEach(function (r, i) {
       if (!map[i]) return;
-      var objs = map[i].map(function (j, n) {
-        var o = JSON.parse(JSON.stringify(r.objects[j])); o.key = i + '-' + j;
-        o.unlock = keys.length === total(C) ? (o.unlock || 0) : Math.min(UNLOCK[n] != null ? UNLOCK[n] : 4, n);
+      var objs = shuffle(map[i]).map(function (j, n) {
+        var o = copyObj(C, i + '-' + j);
+        o.unlock = Math.min(UNLOCK[n] != null ? UNLOCK[n] : 4, n);
         return o;
       });
       var room = JSON.parse(JSON.stringify(r)); room.objects = objs; room.origIndex = i;
@@ -59,6 +72,48 @@ window.WQSettings = (function () {
       out.push(room);
     });
     return out;
+  }
+
+  /* ---------- 作答方式（選擇／是非／填充／打字／手寫） ----------
+     手寫田字格直接載入「師生同步出題」工具（live-class-quiz）的 ink.js，兩邊共用同一份程式。 */
+  var LCQ = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin + '/andice0107/live-class-quiz/' : 'https://andice0107.github.io/live-class-quiz/';
+  var INPUT_NAMES = { choice: '選擇題', tf: '是非題', fill: '填充', text: '打字作答', draw: '手寫' };
+  var DRAW_KINDS = { hanzi: '寫國字', zhuyin: '寫注音', correction: '改錯字', word: '造詞', write: '手寫作答' };
+  function inputOf(q) { return (q && q.input) || 'choice'; }
+  function isChoice(q) { var i = inputOf(q); return i === 'choice' || i === 'tf'; }
+  function inputLabel(q) { var i = inputOf(q); return i === 'draw' ? (DRAW_KINDS[q.kind] || '手寫') : INPUT_NAMES[i]; }
+  function prepQ(q) {
+    var i = inputOf(q);
+    if (i === 'tf') { q.options = ['⭕ 對', '❌ 不對']; q.answer = q.answer === 1 ? 1 : 0; return q; }
+    if (i !== 'choice' || !q.options || q.options.length < 2) return q;
+    var idx = shuffle(q.options.map(function (_, k) { return k; }));
+    q.answer = idx.indexOf(q.answer); q.options = idx.map(function (k) { return q.options[k]; });
+    return q;
+  }
+  function norm(s) { return String(s == null ? '' : s).replace(/[\s，。、,.!！?？「」]/g, '').toLowerCase(); }
+  function fillMatch(q, v) { var a = String(q.answerText || '').split(/[|｜]/).map(norm).filter(Boolean); return !!norm(v) && a.indexOf(norm(v)) >= 0; }
+  function answerShow(q) { return String(q.answerText || '').split(/[|｜]/).join(' 或 '); }
+  var inkP = null;
+  function loadInk() {
+    if (!inkP) {
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = LCQ + 'fonts/tw-kai/tw-kai.css'; document.head.appendChild(l);
+      inkP = import(LCQ + 'js/ink.js');
+    }
+    return inkP;
+  }
+  /* 田字格數（和同步出題工具 ink.js 的 defaultCells 相同規則，給不能先看答案的學生端用） */
+  function cellCount(q) {
+    if (q.cells) return Math.max(1, Math.min(10, +q.cells));
+    var a = String(q.answerText || ''), han = function (t) { return (t.match(/[\u3400-\u9fff\uf900-\ufaff]/g) || []).length; };
+    if (q.kind === 'hanzi') return Math.max(1, Math.min(10, (a.split(/[|｜、,，]/)[0].match(/[\u3400-\u9fff\uf900-\ufaff]|[\u3105-\u312f˙ˊˇˋ]+/g) || []).length || 1));
+    if (q.kind === 'zhuyin') return Math.max(1, Math.min(10, a.trim().split(/\s+/).filter(Boolean).length || 1));
+    if (q.kind === 'correction') return Math.max(1, Math.min(10, han(a.split(/→|->|改成|＞|>/).pop()) || 1));
+    if (q.kind === 'word') return 2;
+    return 1;
+  }
+  function cellsOf(q, ink) {
+    if (q.cells) return Math.max(1, Math.min(10, +q.cells));
+    return ink.defaultCells({ type: q.kind || 'write', answer: q.answerText || '' });
   }
   function usedKey(C) { return 'wordQuestUsed_' + (C.title || '') + '_' + total(C); }
   function loadUsed(C) { try { return JSON.parse(localStorage.getItem(usedKey(C)) || '[]'); } catch (e) { return []; } }
@@ -72,5 +127,7 @@ window.WQSettings = (function () {
   }
   var REPEAT_NAMES = { none: '不接受另一趟挑戰', redraw: '從全部題目重新抽題', norepeat: '抽過的不再抽，全部抽完才是終極破關' };
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, buildRooms: buildRooms, total: total, allKeys: allKeys,
-    loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES };
+    loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
+    LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
+    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES };
 })();

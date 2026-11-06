@@ -281,6 +281,8 @@
     cur = { kind: 'q', j: j, key: key, done: false };
     clearModal(); head(o.sprite, o.tint, q.speaker || o.name, '咒語挑戰・' + (TYPE_NAMES[q.type] || q.type || ''));
     $('m-prompt').textContent = q.prompt;
+    if (!WQSettings.isChoice(q)) { openFree(o, q, key); overlay('modal', true); $('modal-card').scrollTop = 0; startQTimer(); return; }
+    if (q.input === 'tf') $('m-type').textContent = '咒語挑戰・是非題';
     var short = q.options.every(function (t) { return t.length <= 6; });
     var wrap = el('div', 'opts' + (short ? ' grid' : '')), w = S.wrongs[key] || [];
     q.options.forEach(function (t, k) {
@@ -296,6 +298,81 @@
     overlay('modal', true); $('modal-card').scrollTop = 0;
     startQTimer();
   }
+  /* ---------- 打字、手寫作答（手寫板用同步出題工具的 ink.js） ---------- */
+  function openFree(o, q, key) {
+    var inp = WQSettings.inputOf(q), box = el('div', 'free'), w = S.wrongs[key] || [];
+    $('m-type').textContent = '咒語挑戰・' + WQSettings.inputLabel(q);
+    $('m-body').appendChild(box);
+    var go = el('button', 'btn btn-gold', '送出答案'); go.type = 'button'; go.id = 'free-go';
+    if (inp === 'draw') {
+      var tip = el('div', 'mute', '用手指或觸控筆寫在格子裡，寫好按「送出答案」。'); box.appendChild(tip);
+      var chooser = el('div', 'cell-count hidden'), wrap = el('div', 'cells-wrap'), cont = el('div'); wrap.appendChild(cont);
+      box.appendChild(chooser); box.appendChild(wrap);
+      WQSettings.loadInk().then(function (ink) {
+        if (!cur || cur.key !== key) return;
+        cur.ink = ink;
+        function build(k) { cur.n = k; cur.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function () {} }); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
+        if (q.kind === 'word' && !q.cells) {
+          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '這個詞有幾個字？'));
+          [2, 3, 4].forEach(function (k) { var b = el('button', '', k + ' 格'); b.type = 'button'; b.dataset.n = k; b.onclick = function () { if (!cur.done) build(k); }; chooser.appendChild(b); });
+        }
+        build(WQSettings.cellsOf(q, ink));
+      }).catch(function () { box.appendChild(el('div', 'fb-title', '手寫板載入失敗，請確認網路連線後重新打開這一題。')); });
+      go.onclick = function () {
+        if (!cur || cur.done || !cur.cells) return;
+        var v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }) };
+        if (!cur.ink.hasInk(v)) return feedback('hint', '還沒寫答案', '先在格子裡寫好再送出喔。');
+        judgeFree(o, q, v);
+      };
+    } else {
+      var t = el(inp === 'fill' ? 'input' : 'textarea'); if (inp === 'fill') t.type = 'text';
+      t.placeholder = inp === 'fill' ? '在這裡輸入答案' : '在這裡打字作答'; t.id = 'free-text'; box.appendChild(t);
+      setTimeout(function () { try { t.focus(); } catch (e) {} }, 300);
+      t.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter' && inp === 'fill') { e.preventDefault(); go.click(); } });
+      go.onclick = function () {
+        if (!cur || cur.done) return; var v = t.value.trim();
+        if (!v) return feedback('hint', '還沒有答案', '先輸入答案再送出喔。');
+        if (inp === 'fill') return fillAnswer(o, q, v, t, go);
+        judgeFree(o, q, v);
+      };
+    }
+    box.appendChild(go);
+    if (w.length === 1) feedback('hint', '提示', q.hint1); else if (w.length >= 2) feedback('hint', '更明確的提示', q.hint2);
+  }
+  function fillAnswer(o, q, v, t, go) {
+    var w = S.wrongs[cur.key] || (S.wrongs[cur.key] = []);
+    if (WQSettings.fillMatch(q, v)) {
+      cur.done = true; t.disabled = true; go.disabled = true;
+      var pts = [100, 60, 30][w.length] || 30; if (w.length === 0) S.firstTry++; else S.needHint++; if (w.length >= 2) S.review.push(o.word);
+      var c = center(go); floatText('+' + pts, c.x, c.y); sparks(c.x, c.y, 18); play('correct'); addScore(pts);
+      feedback('good', '咒語啟動！「' + o.word + '」回到魔法書了。', q.explain, o.clue); return finishQ(o);
+    }
+    play('wrong'); w.push(v); restart($('modal-card'), 'shake-card'); t.select();
+    if (w.length === 1) feedback('hint', '咒語沒有反應…提示', q.hint1);
+    else if (w.length === 2) feedback('hint', '再想想，更明確的提示', q.hint2);
+    else { cur.done = true; t.disabled = true; go.disabled = true; S.revealed++; S.review.push(o.word); feedback('reveal', '黑貓幫你解開了咒語：答案是「' + WQSettings.answerShow(q) + '」', q.explain, o.clue); finishQ(o); }
+  }
+  /* 手寫、打字題：送出後對照參考答案，自己判斷對錯（多人模式由老師批改） */
+  function judgeFree(o, q, v) {
+    cur.done = true; cur.pending = true; stopQTimer(); $('m-close').classList.add('hidden');
+    $('m-body').querySelectorAll('button, textarea, input').forEach(function (b) { b.disabled = true; });
+    if (cur.cells) cur.cells.forEach(function (c) { c.setEnabled(false); });
+    var m = el('div', 'model'); m.appendChild(el('b', '', '參考答案：')); m.appendChild(el('span', 'kai', WQSettings.answerShow(q) || '（老師判斷）'));
+    if (typeof v !== 'string' && cur.ink && WQSettings.inputOf(q) === 'draw') {
+      var cv = el('canvas', 'ink-view'); m.appendChild(el('div', 'mute', '你寫的答案（淡綠色是範字）：')); m.appendChild(cv);
+      var guides = cur.ink.guideChars(q.kind, q.answerText);
+      cur.ink.ensureKai(guides).then(function () { cur && cur.ink && cur.ink.paintInkThumb(cv, v, { grid: q.kind !== 'write', guides: guides.length ? guides : null }); });
+      requestAnimationFrame(function () { cur.ink.paintInkThumb(cv, v, { grid: q.kind !== 'write', guides: guides.length ? guides : null }); });
+    }
+    $('m-body').appendChild(m);
+    var sj = el('div', 'self-judge'); sj.appendChild(el('div', 'mute', '對照參考答案，你答對了嗎？'));
+    var ok = el('button', 'btn btn-gold', '✔ 我答對了'), ng = el('button', 'btn btn-violet', '✘ 我答錯了'); ok.type = ng.type = 'button'; ok.id = 'judge-ok'; ng.id = 'judge-ng';
+    ok.onclick = function () { sj.remove(); S.firstTry++; var c = center(ok); floatText('+100', c.x, c.y); sparks(c.x, c.y, 18); play('correct'); addScore(100); feedback('good', '咒語啟動！「' + o.word + '」回到魔法書了。', q.explain, o.clue); finishQ(o); };
+    ng.onclick = function () { sj.remove(); S.revealed++; S.review.push(o.word); play('wrong'); feedback('reveal', '沒關係，記住正確答案：「' + WQSettings.answerShow(q) + '」', q.explain, o.clue); finishQ(o); };
+    sj.appendChild(ok); sj.appendChild(ng); $('m-body').appendChild(sj);
+    setTimeout(function () { sj.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
+  }
+
   /* 每題作答時限 */
   var qt = null;
   function stopQTimer() { clearInterval(qt); qt = null; var b = $('m-timer'); if (b) b.remove(); $('m-close').classList.remove('hidden'); }
@@ -314,10 +391,12 @@
   }
   function timeUp() {
     if (!cur || cur.kind !== 'q' || cur.done) return;
-    var o = ROOMS[S.room].objects[cur.j], q = o.q;
+    var o = ROOMS[S.room].objects[cur.j], q = o.q, ch = WQSettings.isChoice(q);
     cur.done = true; S.revealed++; S.review.push(o.word); play('wrong');
     $('m-body').querySelectorAll('.opt').forEach(function (b) { b.disabled = true; if (+b.dataset.k === q.answer) b.classList.add('correct'); });
-    feedback('reveal', '時間到！黑貓幫你解開了咒語：正確答案是「' + q.options[q.answer] + '」', q.explain, o.clue); finishQ(o);
+    $('m-body').querySelectorAll('button, textarea, input').forEach(function (b) { b.disabled = true; });
+    if (cur.cells) cur.cells.forEach(function (c) { c.setEnabled(false); });
+    feedback('reveal', '時間到！黑貓幫你解開了咒語：正確答案是「' + (ch ? q.options[q.answer] : WQSettings.answerShow(q)) + '」', q.explain, o.clue); finishQ(o);
   }
   function answer(k, btn) {
     if (!cur || cur.kind !== 'q' || cur.done) return;
@@ -343,13 +422,13 @@
     }
   }
   function finishQ(o) {
-    stopQTimer();
+    stopQTimer(); if (cur) cur.pending = false;
     S.solved[S.room][cur.j] = true; S.notes[S.room].push({ from: o.name, text: o.clue }); S.unread++; step();
     $('m-continue').textContent = '繼續探索'; $('m-continue').classList.remove('hidden'); $('m-keyhint').textContent = '';
     setTimeout(function () { $('m-feedback').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
   }
   function closeModal() {
-    if (qt) return;
+    if (qt || (cur && cur.pending)) return;
     play('tap'); var c = cur; overlay('modal', false); cur = null; codeKeys = null; stopQTimer();
     if (c && c.done) { renderObjects(false); if (c.kind === 'puzzle') showRune(); }
   }

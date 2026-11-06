@@ -123,7 +123,8 @@
       }
       case 'story': c.appendChild(el('h2', '', S.story ? '古堡大門關上了！' : '一封神祕的信')); c.appendChild(el('p', '', '請抬頭看老師的大螢幕，一起聽冒險的開場故事。')); break;
       case 'room': c.appendChild(el('h2', '', '第 ' + S.room.n + ' 個房間：' + S.room.name)); c.appendChild(el('p', '', S.room.intro)); c.appendChild(el('p', 'gold', '準備好，題目馬上出現！')); break;
-      case 'question': buildQuestion(c); break;
+      case 'question': if (WQSettings.isChoice(S.q)) buildQuestion(c); else buildFree(c); break;
+      case 'grade': c.appendChild(el('h2', '', '✍️ 老師正在批改……')); c.appendChild(el('p', '', '看大螢幕，等老師公布答案。')); showMine(c); break;
       case 'reveal': buildReveal(c); break;
       case 'chest': c.appendChild(el('h2', '', '房間破關！取得符文')); c.appendChild(el('p', '', '在這個房間答對一半以上的勇者，可以打開通關寶箱，得到一張魔法卡。')); break;
       case 'merchant': buildMerchant(c); break;
@@ -142,6 +143,7 @@
   function update() {
     if (V.cnt) V.cnt.textContent = '目前有 ' + S.players.length + ' 位勇者';
     if (S.ph === 'question' && V.opts) updQuestion();
+    if (S.ph === 'question' && V.freeSt) updFree();
     if (S.ph === 'merchant' && V.buys) updMerchant();
   }
 
@@ -173,8 +175,71 @@
     else if ((cu.rm || []).length) { f.classList.add('hint'); f.appendChild(el('b', '', '👁️ 消除魔眼幫你刪掉了錯誤的選項！')); }
     else f.className = 'fb hidden';
   }
+  /* ---------- 打字、手寫題（手寫板用同步出題工具的 ink.js） ---------- */
+  var lastSub = null;
+  function buildFree(c) {
+    var q = S.q, qi = S.qi, cu = mine.cur || {};
+    c.appendChild(el('div', 'mute', q.speaker + '・' + q.label));
+    c.appendChild(el('div', 'p-prompt', q.prompt));
+    var box = el('div', 'free'); c.appendChild(box);
+    if (cu.sk) { box.appendChild(el('div', 'fb good', '🌀 傳送門卡生效！這關自動過關。')); return; }
+    var go = btn('btn btn-gold', '送出答案', function () {
+      if (S.paused) return toast('老師暫停中，等一下再送出。');
+      var v;
+      if (q.input === 'draw') { if (!V.cells) return; v = { n: V.n, c: V.cells.map(function (x) { return { s: x.s }; }) }; if (!V.ink.hasInk(v)) return toast('先在格子裡寫好答案再送出喔。'); }
+      else { v = V.text.value.trim(); if (!v) return toast('先輸入答案再送出喔。'); }
+      lastSub = { qi: qi, v: v, adv: S.adv }; send('sub', { qi: qi, v: v }); WQSfx.play('tap');
+    }); go.id = 'free-go';
+    if (q.input === 'draw') {
+      var chooser = el('div', 'cell-count hidden'), wrap = el('div', 'cells-wrap'), cont = el('div'); wrap.appendChild(cont);
+      box.appendChild(chooser); box.appendChild(wrap);
+      WQSettings.loadInk().then(function (ink) {
+        if (S.qi !== qi || S.ph !== 'question') return;
+        V.ink = ink;
+        function build(k) { V.n = k; V.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function () {} }); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
+        if (q.kind === 'word' && !q.cells) {
+          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '幾個字？'));
+          [2, 3, 4].forEach(function (k) { var b = btn('', k + ' 格', function () { build(k); }); b.dataset.n = k; chooser.appendChild(b); });
+        }
+        build(Math.max(1, q.cellN || q.cells || 1));
+      }).catch(function () { box.appendChild(el('div', 'fb bad', '手寫板載入失敗，請確認網路後重新整理。')); });
+    } else {
+      V.text = el(q.input === 'fill' ? 'input' : 'textarea'); if (q.input === 'fill') V.text.type = 'text';
+      V.text.placeholder = '在這裡打字作答'; V.text.id = 'free-text'; box.appendChild(V.text);
+    }
+    box.appendChild(go);
+    V.freeSt = el('div', 'fb hidden'); box.appendChild(V.freeSt);
+  }
+  function updFree() {
+    var cu = mine.cur || {}; if (!V.freeSt) return;
+    V.freeSt.className = cu.sb ? 'fb good' : 'fb hidden'; V.freeSt.textContent = cu.sb ? '✔ 已送出！時間結束前還可以修改，再按一次「送出答案」。' : '';
+  }
+  function showMine(c, q, guide) {
+    if (!lastSub || lastSub.qi !== S.qi || lastSub.adv !== S.adv) { if (S.ph === 'grade') c.appendChild(el('p', 'mute', '你這題沒有送出答案。')); return; }
+    var v = lastSub.v, q2 = q || S.q || {};
+    var box = el('div', 'model'); box.appendChild(el('b', '', '你的答案：'));
+    if (typeof v === 'string') box.appendChild(el('span', '', v));
+    else {
+      var cv = el('canvas', 'ink-view'); box.appendChild(cv);
+      WQSettings.loadInk().then(function (ink) {
+        var g = guide && q2.answerText ? ink.guideChars(q2.kind, q2.answerText) : [];
+        var paint = function () { ink.paintInkThumb(cv, v, { grid: q2.kind !== 'write', guides: g.length ? g : null }); };
+        requestAnimationFrame(paint); if (g.length) ink.ensureKai(g).then(paint);
+      });
+    }
+    c.appendChild(box);
+  }
   function buildReveal(c) {
     var cu = mine.cur || {}, q = S.q;
+    if (!WQSettings.isChoice(q)) {
+      c.appendChild(el('div', 'big-res', cu.c ? '✔ 老師批改：答對！' : '✘ 這題沒答對'));
+      if (cu.c) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
+      var md = el('div', 'model'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', String(q.answerText || '（老師判斷）').split(/[|｜]/).join(' 或 '))); c.appendChild(md);
+      showMine(c, q, true);
+      if (q.explain) c.appendChild(el('p', 'mute', q.explain));
+      c.appendChild(el('p', '', '你現在是第 ' + mine.rank + ' 名，' + (mine.delta > 0 ? '這題 +' + mine.delta + ' 分' : '這題沒有加分')));
+      WQSfx.play(cu.c ? 'correct' : 'wrong'); return;
+    }
     c.appendChild(el('div', 'big-res', cu.c ? '✔ 答對了！' : '✘ 這題沒答對'));
     if (cu.c) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
     c.appendChild(el('p', '', '正確答案：' + (q.answer + 1) + '. ' + q.options[q.answer]));

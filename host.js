@@ -25,7 +25,7 @@
     var used = SET.repeat === 'norepeat' ? G.used : [];
     if (used.length >= ALLQ) { used = G.used = []; }
     var keys = WQSettings.draw(C, SET.drawCount, used);
-    G.rooms = WQSettings.buildRooms(C, keys); G.seq = [];
+    G.rooms = WQSettings.buildRooms(C, keys, { mix: true }); G.seq = [];
     G.rooms.forEach(function (r, ri) { r.objects.forEach(function (o, j) { G.seq.push({ ri: ri, j: j, o: o, key: o.key }); }); });
     G.keys = keys; G.qi = -1; G.log = []; G.fairyPicked = []; G.elapsed = 0; G.ultimate = false;
     list().forEach(function (p) { p.score = 0; p.cards = []; p.correct = 0; p.wrong = 0; p.streak = 0; p.best = 0; p.next = {}; p.cur = null; p.delta = 0; p.room = {}; });
@@ -47,9 +47,10 @@
 
   function snapshot() {
     var it = G.seq[G.qi], q = null, ps = list(), rk = ranked();
-    if (it && (G.phase === 'question' || G.phase === 'reveal')) {
-      var Q = it.o.q;
-      q = { prompt: Q.prompt, options: Q.options, speaker: Q.speaker || it.o.name, type: TYPE[Q.type] || Q.type || '', hint1: Q.hint1, hint2: Q.hint2,
+    if (it && (G.phase === 'question' || G.phase === 'reveal' || G.phase === 'grade')) {
+      var Q = it.o.q, rv = G.phase === 'reveal';
+      q = { input: WQSettings.inputOf(Q), kind: Q.kind || '', cells: Q.cells || 0, label: WQSettings.inputLabel(Q), answerText: rv ? Q.answerText || '' : '', cellN: WQSettings.inputOf(Q) === 'draw' ? WQSettings.cellCount(Q) : 0,
+        prompt: Q.prompt, options: Q.options || [], speaker: Q.speaker || it.o.name, type: TYPE[Q.type] || Q.type || '', hint1: Q.hint1, hint2: Q.hint2,
         answer: G.phase === 'reveal' ? Q.answer : -1, explain: G.phase === 'reveal' ? Q.explain : '', word: G.phase === 'reveal' ? it.o.word : '', clue: G.phase === 'reveal' ? it.o.clue : '' };
     }
     var rit = G.phase === 'room' ? G.seq[G.qi + 1] : it, room = rit ? G.rooms[rit.ri] : (G.rooms[0] || {});
@@ -59,7 +60,7 @@
       untilCards: SET.cardEvery - ((G.qi + 1) % SET.cardEvery), cardEvery: SET.cardEvery, maxP: MAX,
       players: ps.map(function (p) {
         return { pid: p.pid, name: p.name, g: p.gender, seed: p.seed, score: p.score, rank: rk.indexOf(p) + 1, cards: p.cards, next: Object.keys(p.next || {}),
-          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second } : null,
+          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined } : null,
           delta: p.delta || 0, rd: p.rankDelta || 0, correct: p.correct, wrong: p.wrong, streak: p.streak, on: online(p) };
       }),
       merchant: G.merchant ? { stock: G.merchant.stock, done: Object.keys(G.merchant.done) } : null,
@@ -88,6 +89,7 @@
     if (d.t === 'ping') return;
     if (G.paused && d.t !== 'leave') return fx(p.pid, 'info', '老師暫停中，請稍等一下。');
     if (d.t === 'ans') answer(p, +d.k, +d.qi);
+    else if (d.t === 'sub') submitFree(p, d.v, +d.qi);
     else if (d.t === 'buy') buy(p, d.card);
     else if (d.t === 'tradeDone') { if (G.merchant) { G.merchant.done[p.pid] = 1; G.merchant.feed.push(p.name + ' 完成交易'); renderMerchantFeed(); push(); checkMerchantDone(); } }
     else if (d.t === 'use') useCard(p, d.card, d.target);
@@ -110,7 +112,7 @@
     if (sec !== lastSec) { lastSec = sec; liveUpdate(); push(); if (G.timer && G.timer.kind === 'q' && G.timer.remain < 5500) WQSfx.play('tick'); }
   }, 100);
   function timeout(k) {
-    if (k === 'q') reveal();
+    if (k === 'q') endQuestion();
     else if (k === 'merchant') endMerchant();
     else if (k === 'turn') { var p = G.players[G.turn.order[G.turn.idx]]; G.effect = { n: ++G.fxN, by: p ? p.pid : '', pass: true, title: '', lines: [(p ? p.name : '勇者') + ' 時間到，這回合沒有使用魔法卡。'] }; startTimer('effect', 1800); renderCards(); push(); }
     else if (k === 'effect') nextTurn();
@@ -140,7 +142,7 @@
 
   /* ---------- 畫面 ---------- */
   function stage() { var s = $('stage'); s.innerHTML = ''; return s; }
-  function render() { liveUpdate(); ({ lobby: renderLobby, story: renderStory, room: renderRoom, question: renderQuestion, reveal: renderReveal, chest: renderChest,
+  function render() { liveUpdate(); ({ lobby: renderLobby, story: renderStory, room: renderRoom, question: renderQuestion, grade: renderGrade, reveal: renderReveal, chest: renderChest,
     merchant: renderMerchant, fairy: renderFairy, cards: renderCards, gate: renderGate, end: renderEnd })[G.phase](); }
 
   function renderLobby() {
@@ -201,13 +203,14 @@
 
   /* ---------- 題目 ---------- */
   function freshCur(p) {
-    var it = G.seq[G.qi], Q = it.o.q, n = p.next || {}, cur = { tries: [], done: false, correct: false, pts: 0, bonus: 0, sp: 0, ms: 0, removed: [], second: !!n.second, frozen: !!n.frozen, lucky: !!n.lucky, skip: !!n.skip, before: p.score };
-    if (n.fifty) {
+    var it = G.seq[G.qi], Q = it.o.q, n = p.next || {}, keep = {}, cur = { tries: [], done: false, correct: false, pts: 0, bonus: 0, sp: 0, ms: 0, removed: [], second: !!n.second, frozen: !!n.frozen, lucky: !!n.lucky, skip: !!n.skip, before: p.score };
+    if (!WQSettings.isChoice(Q)) { if (n.fifty) keep.fifty = true; if (n.second) keep.second = true; cur.second = false; }
+    else if (n.fifty) {
       var wrong = Q.options.map(function (_, k) { return k; }).filter(function (k) { return k !== Q.answer; });
       cur.removed = WQSettings.shuffle(wrong).slice(0, Q.options.length >= 4 ? 2 : 1);
     }
-    if (n.skip) { cur.done = true; cur.correct = true; cur.pts = n.frozen ? 0 : 100; p.score += cur.pts; }
-    p.next = {};
+    if (n.skip) { cur.done = true; cur.correct = true; cur.mark = true; cur.pts = n.frozen ? 0 : 100; p.score += cur.pts; }
+    p.next = keep;
     return cur;
   }
   function startQuestion() {
@@ -239,7 +242,7 @@
   var doneT = null;
   function checkAllDone() {
     var act = list().filter(online); if (!act.length) return;
-    if (act.every(function (p) { return p.cur && p.cur.done; })) { clearTimeout(doneT); doneT = setTimeout(function () { if (G.phase === 'question') reveal(); }, 1200); }
+    if (act.every(function (p) { return p.cur && p.cur.done; })) { clearTimeout(doneT); doneT = setTimeout(function () { if (G.phase === 'question') endQuestion(); }, 1200); }
   }
   function updateStrip(st) {
     if (!st) return; var n = 0;
@@ -253,8 +256,11 @@
   function renderQuestion() {
     var it = G.seq[G.qi], Q = it.o.q, s = stage(), L = el('div', 'qlayout'), c = el('div', 'panel qcard');
     c.appendChild(qHead(it)); c.appendChild(el('div', 'qprompt', Q.prompt));
-    var os = el('div', 'hopts'); Q.options.forEach(function (t, k) { var o = el('div', 'hopt'); o.appendChild(el('span', 'k', String(k + 1))); o.appendChild(el('span', '', t)); os.appendChild(o); });
-    c.appendChild(os); L.appendChild(c);
+    if (WQSettings.isChoice(Q)) {
+      var os = el('div', 'hopts'); Q.options.forEach(function (t, k) { var o = el('div', 'hopt'); o.appendChild(el('span', 'k', String(k + 1))); o.appendChild(el('span', '', t)); os.appendChild(o); });
+      c.appendChild(os);
+    } else c.appendChild(el('div', 'free-tag', (WQSettings.inputOf(Q) === 'draw' ? '✍️ ' : '⌨️ ') + WQSettings.inputLabel(Q) + '：請在自己的裝置上' + (WQSettings.inputOf(Q) === 'draw' ? '手寫' : '打字') + '作答，寫好按「送出」'));
+    L.appendChild(c);
     var side = el('div', 'side panel');
     if (SET.qTimer) {
       var ring = el('div', 'ring'); ring.id = 'ring';
@@ -265,31 +271,110 @@
     var st = el('div', 'strip'); st.id = 'strip';
     list().forEach(function (p) { var m = el('div', 'mini'); m.dataset.pid = p.pid; m.appendChild(px(p)); m.appendChild(el('span', '', p.name)); st.appendChild(m); });
     side.appendChild(st);
-    side.appendChild(btn('btn btn-violet', '結束本題、公布答案', function () { reveal(); }, 'h-reveal'));
+    side.appendChild(btn('btn btn-violet', WQSettings.isChoice(Q) ? '結束本題、公布答案' : '結束作答、開始批改', function () { endQuestion(); }, 'h-reveal'));
     L.appendChild(side); s.appendChild(L); updateStrip(st); liveUpdate();
   }
 
-  function reveal() {
+  /* ---------- 打字、手寫題：學生送出 → 老師批改 → 公布答案 ---------- */
+  function submitFree(p, v, qi) {
+    var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || !Q || WQSettings.isChoice(Q)) return;
+    if (typeof v === 'string') v = v.slice(0, 600); else if (!v || !v.c) return;
+    p.cur.sub = { v: v, at: Math.round(G.q.ms) }; p.cur.ms = p.cur.sub.at; p.cur.done = true;
+    fx(p.pid, 'good', '已送出！時間結束前還可以修改再送出。');
+    updateStrip($('strip')); push(); checkAllDone();
+  }
+  function endQuestion() {
     if (G.phase !== 'question') return;
+    var Q = G.seq[G.qi].o.q;
+    if (WQSettings.isChoice(Q)) return reveal();
+    clearTimeout(doneT); G.timer = null; G.phase = 'grade'; G.mask = true; G.opened = {};
+    list().forEach(function (p) {
+      var c = p.cur || (p.cur = freshCur(p)); if (c.skip) return;
+      if (!c.sub) c.mark = false;
+      else if (WQSettings.inputOf(Q) === 'fill' && WQSettings.fillMatch(Q, c.sub.v)) c.mark = true;
+    });
+    render(); push(); WQSfx.play('open');
+  }
+  function renderGrade() {
+    var it = G.seq[G.qi], Q = it.o.q, s = stage(), w = el('div', 'panel grade');
+    var top = el('div', 'grade-top'); top.appendChild(qHead(it));
+    var info = el('div', 'grade-info'); info.appendChild(el('div', 'qprompt small', Q.prompt));
+    var mdl = el('div', 'model'); mdl.appendChild(el('b', '', '參考答案：')); var ms = el('span', 'kai', WQSettings.answerShow(Q) || '（老師判斷）'); mdl.appendChild(ms);
+    var eye = btn('hbtn', '顯示', function () { mdl.classList.toggle('blur'); eye.textContent = mdl.classList.contains('blur') ? '顯示' : '隱藏'; }); mdl.classList.add('blur'); mdl.appendChild(eye);
+    info.appendChild(mdl); top.appendChild(info); w.appendChild(top);
+    var bar = el('div', 'grade-bar');
+    bar.appendChild(btn('hbtn' + (G.mask ? '' : ' on'), '全開', function () { G.mask = false; G.opened = {}; renderGrade(); }));
+    bar.appendChild(btn('hbtn' + (G.mask ? ' on' : ''), '全遮', function () { G.mask = true; G.opened = {}; renderGrade(); }));
+    bar.appendChild(btn('hbtn', '未批改的全部標對', function () { list().forEach(function (p) { if (p.cur && p.cur.sub && p.cur.mark === undefined) p.cur.mark = true; }); renderGrade(); }));
+    var left = list().filter(function (p) { return p.cur && p.cur.sub && p.cur.mark === undefined; }).length;
+    bar.appendChild(el('span', 'pill', left ? '還有 ' + left + ' 位沒批改' : '全部批改完成'));
+    bar.appendChild(btn('btn btn-gold', '公布答案', function () {
+      var n = list().filter(function (p) { return p.cur && p.cur.sub && p.cur.mark === undefined; }).length;
+      if (n && !confirm('還有 ' + n + ' 位勇者沒有批改，這些會算答錯。確定公布答案嗎？')) return;
+      reveal();
+    }, 'h-publish'));
+    w.appendChild(bar);
+    var grid = el('div', 'grade-grid');
+    var guides = null;
+    list().forEach(function (p) {
+      var c = p.cur || {}, t = el('div', 'gtile' + (c.mark === true ? ' ok' : (c.mark === false ? ' ng' : '')));
+      var h = el('div', 'gh'); h.appendChild(px(p)); h.appendChild(el('span', '', p.name)); if (c.sub) h.appendChild(el('small', 'mute', (c.sub.at / 1000).toFixed(1) + ' 秒')); t.appendChild(h);
+      var body = el('div', 'gbody' + (G.mask && !G.opened[p.pid] ? ' masked' : ''));
+      if (c.skip) body.appendChild(el('div', 'gtext', '🌀 傳送門卡自動過關'));
+      else if (!c.sub) body.appendChild(el('div', 'gtext mute', '沒有作答'));
+      else if (typeof c.sub.v === 'string') body.appendChild(el('div', 'gtext', c.sub.v));
+      else { var cv = el('canvas', 'gink'); body.appendChild(cv); paintInk(cv, c.sub.v, Q); }
+      body.addEventListener('click', function () { G.opened[p.pid] = 1; body.classList.remove('masked'); });
+      t.appendChild(body);
+      if (c.sub && !c.skip) {
+        var ab = el('div', 'gbtns');
+        ab.appendChild(btn('gok' + (c.mark === true ? ' on' : ''), '✔ 對', function () { c.mark = true; renderGrade(); }));
+        ab.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 錯', function () { c.mark = false; renderGrade(); }));
+        t.appendChild(ab);
+      }
+      grid.appendChild(t);
+    });
+    w.appendChild(grid); s.appendChild(w);
+  }
+  function paintInk(cv, v, Q) {
+    WQSettings.loadInk().then(function (ink) {
+      requestAnimationFrame(function () { ink.paintInkThumb(cv, v, { grid: Q.kind !== 'write' }); });
+    }).catch(function () { cv.replaceWith(el('div', 'gtext', '（手寫板載入失敗）')); });
+  }
+
+  function reveal() {
+    if (G.phase !== 'question' && G.phase !== 'grade') return;
     clearTimeout(doneT); G.timer = null; var it = G.seq[G.qi], Q = it.o.q;
     var res = {};
+    if (!WQSettings.isChoice(Q)) {
+      var okList = list().filter(function (p) { return p.cur && !p.cur.skip && p.cur.sub && p.cur.mark === true; }).sort(function (a, b) { return a.cur.sub.at - b.cur.sub.at; });
+      list().forEach(function (p) { var c = p.cur; if (c && !c.skip && c.mark !== true) c.mark = false; });
+      okList.forEach(function (p, i) {
+        var c = p.cur; c.correct = true; c.pts = c.frozen ? 0 : 100 + (c.lucky ? 50 : 0);
+        if (!c.frozen) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
+        p.score += c.pts + c.bonus;
+      });
+    }
     list().forEach(function (p) {
       var c = p.cur || freshCur(p); c.done = true;
       if (c.correct) { p.correct++; p.streak++; p.best = Math.max(p.best, p.streak); } else { p.wrong++; p.streak = 0; }
       var rs = p.room[it.ri] || (p.room[it.ri] = { c: 0, n: 0 }); rs.n++; if (c.correct) rs.c++;
       p.delta = p.score - c.before;
-      res[p.pid] = { name: p.name, tries: c.tries.slice(), correct: c.correct, pts: c.pts, bonus: c.bonus, sp: c.sp, ms: c.ms, skip: c.skip, frozen: c.frozen };
+      res[p.pid] = { name: p.name, tries: c.tries.slice(), correct: c.correct, pts: c.pts, bonus: c.bonus, sp: c.sp, ms: c.ms, skip: c.skip, frozen: c.frozen, sub: c.sub ? c.sub.v : null };
     });
     var rk = ranked(); list().forEach(function (p) { p.rankDelta = (p.rankBefore || rk.length) - (rk.indexOf(p) + 1); });
-    G.log.push({ qi: G.qi, room: G.rooms[it.ri].short, name: it.o.name, word: it.o.word, prompt: Q.prompt, options: Q.options, answer: Q.answer, res: res });
+    G.log.push({ qi: G.qi, room: G.rooms[it.ri].short, name: it.o.name, word: it.o.word, prompt: Q.prompt, options: Q.options || [], answer: Q.answer, q: Q, res: res });
     G.phase = 'reveal'; render(); push(); WQSfx.play('correct');
   }
   function renderReveal() {
     var it = G.seq[G.qi], Q = it.o.q, s = stage(), L = el('div', 'qlayout'), c = el('div', 'panel qcard');
     c.appendChild(qHead(it)); c.appendChild(el('div', 'qprompt', Q.prompt));
-    var cnt = Q.options.map(function () { return 0; }); list().forEach(function (p) { if (p.cur) p.cur.tries.forEach(function (k) { cnt[k]++; }); });
-    var os = el('div', 'hopts'); Q.options.forEach(function (t, k) { var o = el('div', 'hopt' + (k === Q.answer ? ' correct' : ' dim')); o.appendChild(el('span', 'k', String(k + 1))); o.appendChild(el('span', '', t)); o.appendChild(el('span', 'cnt', cnt[k] + ' 人選')); os.appendChild(o); });
-    c.appendChild(os);
+    if (WQSettings.isChoice(Q)) {
+      var cnt = Q.options.map(function () { return 0; }); list().forEach(function (p) { if (p.cur) p.cur.tries.forEach(function (k) { cnt[k]++; }); });
+      var os = el('div', 'hopts'); Q.options.forEach(function (t, k) { var o = el('div', 'hopt' + (k === Q.answer ? ' correct' : ' dim')); o.appendChild(el('span', 'k', String(k + 1))); o.appendChild(el('span', '', t)); o.appendChild(el('span', 'cnt', cnt[k] + ' 人選')); os.appendChild(o); });
+      c.appendChild(os);
+    } else { var md = el('div', 'model big'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', WQSettings.answerShow(Q) || '（老師判斷）')); c.appendChild(md); }
     var ex = el('div', 'explain'); ex.appendChild(el('b', 'gold', '咒語「' + it.o.word + '」回到魔法書了！')); ex.appendChild(el('div', '', Q.explain || '')); if (it.o.clue) ex.appendChild(el('div', 'clue', '線索：' + it.o.clue)); c.appendChild(ex);
     L.appendChild(c);
     var m = el('div', 'panel merit'), ps = list(), ok = ps.filter(function (p) { return p.cur && p.cur.correct; });
@@ -574,7 +659,8 @@
     var ql = el('div', 'qlist'); G.log.forEach(function (e, i) { var x = el('button', i === logQ ? 'on' : '', '第 ' + (e.qi + 1) + ' 關・' + e.word); x.type = 'button'; x.onclick = function () { logQ = i; renderLog(); }; ql.appendChild(x); }); b.appendChild(ql);
     var e = G.log[logQ];
     b.appendChild(el('p', '', e.room + '・' + e.name + '：' + e.prompt));
-    b.appendChild(el('p', 'gold', '正確答案：' + (e.answer + 1) + '. ' + e.options[e.answer]));
+    var lq = e.q || {}, lch = WQSettings.isChoice(lq);
+    b.appendChild(el('p', 'gold', '正確答案：' + (lch ? (e.answer + 1) + '. ' + e.options[e.answer] : WQSettings.answerShow(lq) || '（老師判斷）')));
     var t2 = el('table', 't'); t2.innerHTML = '<thead><tr><th>勇者</th><th>作答過程</th><th>結果</th><th>得分</th><th>速度加分</th><th>用時</th></tr></thead>';
     var tb2 = el('tbody');
     Object.keys(e.res).forEach(function (pid) {
@@ -582,7 +668,9 @@
       var tt = el('td', 'tries');
       if (r.skip) tt.appendChild(el('span', 'y', '🌀 傳送門卡自動過關'));
       r.tries.forEach(function (k) { tt.appendChild(el('span', k === e.answer ? 'y' : '', (k + 1) + '. ' + e.options[k])); });
-      if (!r.tries.length && !r.skip) tt.appendChild(el('span', '', '沒有作答'));
+      if (r.sub && typeof r.sub === 'string') tt.appendChild(el('span', r.correct ? 'y' : '', r.sub));
+      else if (r.sub) { var lc = el('canvas', 'gink small'); tt.appendChild(lc); paintInk(lc, r.sub, lq); }
+      if (!r.tries.length && !r.skip && !r.sub) tt.appendChild(el('span', '', '沒有作答'));
       tr.appendChild(tt);
       tr.appendChild(el('td', r.correct ? 'ok' : 'ng', r.correct ? '✔ 答對' + (r.frozen ? '（冰凍）' : '') : '✘ 未答對'));
       tr.appendChild(el('td', '', String(r.pts))); tr.appendChild(el('td', '', r.bonus ? '+' + r.bonus + '（第 ' + r.sp + ' 位）' : '—'));

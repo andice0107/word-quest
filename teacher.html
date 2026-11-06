@@ -38,6 +38,15 @@ small{opacity:.75}
   目前使用：<span class="now" id="now"></span></p>
 
   <div class="step">
+    <h2><span class="n">0</span>請 AI 幫你出題本（選用）</h2>
+    <p>下載「給 AI 的題本設計提示詞」，整段貼給 AI（Claude、ChatGPT、Gemini 都可以），再附上你的教材或題庫。AI 會先提出冒險主題讓你選，再生成可以直接上傳的 Excel 題本。</p>
+    <p><small>國語題本可以有手寫（寫國字、寫注音、改錯字、造詞，答案由老師判斷）和打字（填充、造句）；其他學科以是非題、選擇題為主。</small></p>
+    <a class="btn" href="docs/給AI的題本設計提示詞.md" download="給AI的題本設計提示詞.md">下載給 AI 的提示詞</a>
+    <a class="btn" href="samples/demo-guoyu-handwriting.xlsx" download="國語示範題本_手寫與打字.xlsx">下載國語示範題本（含手寫、打字題）</a>
+    <p><small>想先試玩手寫題：下載國語示範題本，再到下面第 2 步上傳、按「套用到這台裝置」，回首頁開始遊戲就能玩到。</small></p>
+  </div>
+
+  <div class="step">
     <h2><span class="n">1</span>下載題本範本</h2>
     <p>範本裡已經填好「目前的題目」，你只要改想改的格子就好。每個工作表最上面都有說明。</p>
     <button id="dl">下載 Excel 題本</button>
@@ -80,7 +89,12 @@ small{opacity:.75}
   var SPRITE_ZH = { portrait: '畫像', mirror: '魔鏡', pumpkin: '南瓜燈', book: '書', chest: '寶箱', scroll: '卷軸', coins: '金幣', potion: '藥水', crystal: '水晶球', candle: '燭臺', hourglass: '沙漏', cauldron: '大鍋', lantern: '燈籠', ghost: '幽靈', raven: '烏鴉', clock: '大鐘', wizard: '南瓜巫師', cat: '黑貓' };
   var ZH_SPRITE = {}; Object.keys(SPRITE_ZH).forEach(function (k) { ZH_SPRITE[SPRITE_ZH[k]] = k; ZH_SPRITE[k] = k; });
   var PT = { sequence: '順序', code: '密碼', choose: '選擇' }, TP = { '順序': 'sequence', '密碼': 'code', '選擇': 'choose', sequence: 'sequence', code: 'code', choose: 'choose' };
-  var Q_HEAD = ['關卡(1-6)', '物品名稱', '圖示', '語詞', '題型代號', '說話的角色', '題目', '選項1', '選項2', '選項3', '選項4', '正確答案(1-4)', '提示1(答錯一次)', '提示2(答錯兩次)', '解釋與例句', '答對得到的線索', '出現條件(本關答對幾題後才出現)'];
+  var Q_HEAD = ['關卡(1-6)', '物品名稱', '圖示', '語詞', '題型代號', '說話的角色', '題目', '選項1', '選項2', '選項3', '選項4', '正確答案(1-4)', '提示1(答錯一次)', '提示2(答錯兩次)', '解釋與例句', '答對得到的線索', '出現條件(本關答對幾題後才出現)', '作答方式', '參考答案(非選擇題)', '田字格數(可空白)'];
+  var MODE_OUT = { choice: '選擇', tf: '是非', fill: '填充', text: '打字作答', hanzi: '寫國字', zhuyin: '寫注音', correction: '改錯字', word: '造詞', write: '手寫作答' };
+  var MODE_IN = { '': ['choice'], '選擇': ['choice'], '選擇題': ['choice'], '是非': ['tf'], '是非題': ['tf'], '填充': ['fill'], '填充題': ['fill'], '填答': ['fill'],
+    '造句': ['text'], '照樣造句': ['text'], '短語造句': ['text'], '句型造句': ['text'], '打字': ['text'], '打字作答': ['text'], '作文': ['text'], '打字造詞': ['text'],
+    '寫國字': ['draw', 'hanzi'], '看注音寫國字': ['draw', 'hanzi'], '寫注音': ['draw', 'zhuyin'], '看國字寫注音': ['draw', 'zhuyin'], '改錯字': ['draw', 'correction'],
+    '造詞': ['draw', 'word'], '手寫': ['draw', 'write'], '手寫作答': ['draw', 'write'], '計算': ['draw', 'write'] };
   var R_HEAD = ['關卡(1-6)', '房間名稱', '簡稱', '符文', '開場介紹', '黑貓提示', '機關名稱', '機關類型', '機關說明', '機關項目(文字|名稱|顏色，用；分隔)', '機關答案', '機關提示1', '機關提示2', '機關解答說明', '解開後的文字'];
 
   /* ---------- 匯出 ---------- */
@@ -98,13 +112,20 @@ small{opacity:.75}
       ['   密碼：機關答案填數字，例如 847。機關項目留白。'],
       ['   選擇：機關項目填幾個選項，機關答案填正確的是第幾個（1、2、3…）。'],
       ['8. 「故事」工作表：開場信可以有好幾行。'],
-      ['9. 改好後存檔，回到老師設定頁面上傳。']];
+      ['9. 「作答方式」可以空白（＝選擇題），或填：選擇、是非、填充、造句、打字作答、寫國字、寫注音、改錯字、造詞、手寫作答。'],
+      ['   是非：選項不用填，「正確答案」填 1＝對、2＝不對。'],
+      ['   填充：學生打字，自動比對「參考答案」；可以接受好幾種答案時用 | 分隔，例如：游泳|泳。'],
+      ['   造句、打字作答：學生打字；寫國字、寫注音、改錯字、造詞、手寫作答：學生在田字格手寫。這些題目多人模式由老師批改對錯，單人模式由學生對照參考答案。'],
+      ['   寫國字的參考答案填正確的字（例如 朋友）；改錯字填「錯→正」（例如 在→再）；寫注音填注音，每個字用空格隔開。'],
+      ['   「田字格數」通常空白，工具會依參考答案自動決定；造詞空白時學生自己選 2～4 格。'],
+      ['10. 改好後存檔，回到老師設定頁面上傳。']];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(help), '說明');
     var q = [Q_HEAD];
     c.rooms.forEach(function (r, i) { r.objects.forEach(function (o) {
-      var op = o.q.options; q.push([i + 1, o.name, SPRITE_ZH[o.sprite] || o.sprite, o.word, o.q.type, o.q.speaker, o.q.prompt, op[0] || '', op[1] || '', op[2] || '', op[3] || '', o.q.answer + 1, o.q.hint1, o.q.hint2, o.q.explain, o.clue, o.unlock || 0]);
+      var op = o.q.options; q.push([i + 1, o.name, SPRITE_ZH[o.sprite] || o.sprite, o.word, o.q.type, o.q.speaker, o.q.prompt, op[0] || '', op[1] || '', op[2] || '', op[3] || '', (o.q.input && o.q.input !== 'choice' && o.q.input !== 'tf') ? '' : o.q.answer + 1, o.q.hint1, o.q.hint2, o.q.explain, o.clue, o.unlock || 0,
+        MODE_OUT[o.q.input === 'draw' ? o.q.kind : (o.q.input || 'choice')] || '選擇', o.q.answerText || '', o.q.cells || '']);
     }); });
-    var ws = XLSX.utils.aoa_to_sheet(q); ws['!cols'] = [6, 16, 8, 12, 6, 12, 60, 18, 18, 18, 18, 8, 30, 30, 50, 40, 10].map(function (w) { return { wch: w }; });
+    var ws = XLSX.utils.aoa_to_sheet(q); ws['!cols'] = [6, 16, 8, 12, 6, 12, 60, 18, 18, 18, 18, 8, 30, 30, 50, 40, 10, 10, 24, 8].map(function (w) { return { wch: w }; });
     XLSX.utils.book_append_sheet(wb, ws, '題目');
     var rr = [R_HEAD];
     c.rooms.forEach(function (r, i) { var p = r.puzzle;
@@ -163,13 +184,21 @@ small{opacity:.75}
       if (!str(r[6]) && !n) return;
       if (!n || !c.rooms[n - 1]) { errs.push(line + '：關卡號碼不對'); return; }
       var opts = [r[7], r[8], r[9], r[10]].map(str).filter(Boolean);
-      var ans = parseInt(r[11], 10) - 1;
-      if (opts.length < 2) errs.push(line + '：至少要 2 個選項');
-      if (!(ans >= 0 && ans < opts.length)) errs.push(line + '：正確答案要填 1～' + opts.length);
+      var mode = MODE_IN[str(r[17])], ansText = str(r[18]), cells = parseInt(r[19], 10) || 0, ans = parseInt(r[11], 10) - 1;
+      if (!mode) { errs.push(line + '：看不懂作答方式「' + str(r[17]) + '」'); mode = ['choice']; }
+      if (mode[0] === 'choice') {
+        if (opts.length < 2) errs.push(line + '：至少要 2 個選項');
+        if (!(ans >= 0 && ans < opts.length)) errs.push(line + '：正確答案要填 1～' + opts.length);
+      } else if (mode[0] === 'tf') {
+        var tv = str(r[11]); ans = /^(1|對|是|O|○|⭕|V|✓|✔)$/i.test(tv) ? 0 : (/^(2|錯|不對|否|X|×|✗|✘)$/i.test(tv) ? 1 : -1);
+        if (ans < 0) errs.push(line + '：是非題的正確答案要填 1（對）或 2（不對）');
+        opts = ['⭕ 對', '❌ 不對'];
+      } else if (!ansText && mode[1] !== 'write') errs.push(line + '：' + str(r[17]) + '題要填「參考答案」');
       var sp = ZH_SPRITE[str(r[2])]; if (!sp) { if (str(r[2])) warns.push(line + '：圖示「' + str(r[2]) + '」不認得，先用「書」'); sp = 'book'; }
-      var word = str(r[3]) || opts[ans] || '';
+      var word = str(r[3]) || (mode[0] === 'choice' ? opts[ans] : ansText.split(/[|｜]/)[0]) || '';
       c.rooms[n - 1].objects.push({ name: str(r[1]) || word, sprite: sp, tint: 0, unlock: parseInt(r[16], 10) || 0, word: word,
-        q: { type: str(r[4]).toUpperCase(), speaker: str(r[5]) || str(r[1]), prompt: str(r[6]), options: opts, answer: ans, hint1: str(r[12]), hint2: str(r[13]), explain: str(r[14]) },
+        q: (function () { var qq = { type: str(r[4]).toUpperCase(), speaker: str(r[5]) || str(r[1]), prompt: str(r[6]), options: mode[0] === 'choice' || mode[0] === 'tf' ? opts : [], answer: mode[0] === 'choice' || mode[0] === 'tf' ? ans : -1, hint1: str(r[12]), hint2: str(r[13]), explain: str(r[14]) };
+          if (mode[0] !== 'choice') qq.input = mode[0]; if (mode[1]) qq.kind = mode[1]; if (ansText) qq.answerText = ansText; if (cells) qq.cells = cells; return qq; })(),
         clue: str(r[15]) });
     });
     c.rooms = c.rooms.filter(Boolean);
@@ -189,7 +218,7 @@ small{opacity:.75}
     else h += '<p class="ok">讀取成功！《' + c.title + '》共 ' + c.rooms.length + ' 關、' + c.rooms.reduce(function (s, x) { return s + x.objects.length; }, 0) + ' 題。</p>';
     if (r.warns.length) h += '<ul><li>' + r.warns.join('</li><li>') + '</li></ul>';
     $('status').innerHTML = h;
-    $('preview').innerHTML = r.errs.length ? '' : c.rooms.map(function (rm, i) { return '<div class="room">第 ' + (i + 1) + ' 關　' + esc(rm.name) + '（' + rm.objects.length + ' 題）：' + rm.objects.map(function (o) { return esc(o.word); }).join('、') + '<br><small>機關：' + esc(rm.puzzle.name) + '（' + PT[rm.puzzle.type] + '）</small></div>'; }).join('');
+    $('preview').innerHTML = r.errs.length ? '' : c.rooms.map(function (rm, i) { return '<div class="room">第 ' + (i + 1) + ' 關　' + esc(rm.name) + '（' + rm.objects.length + ' 題）：' + rm.objects.map(function (o) { return esc(o.word) + (o.q.input ? '<small>（' + MODE_OUT[o.q.input === 'draw' ? o.q.kind : o.q.input] + '）</small>' : ''); }).join('、') + '<br><small>機關：' + esc(rm.puzzle.name) + '（' + PT[rm.puzzle.type] + '）</small></div>'; }).join('');
     pending = r.errs.length ? null : c;
     $('apply').disabled = $('share').disabled = !pending;
   }

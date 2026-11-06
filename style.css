@@ -263,6 +263,32 @@ button:focus{outline:none} button:focus-visible{outline:3px solid var(--gold);ou
 #end-review{max-width:560px;line-height:1.7;background:rgba(20,14,40,.6);border-radius:12px;padding:10px 16px}
 
 /* 冒險篇章追加 */
+.start-notes{display:flex;flex-direction:column;gap:8px;max-width:560px;width:100%}
+.sn{display:block;background:rgba(20,14,40,.62);border:1px solid rgba(232,193,90,.35);border-radius:14px;padding:8px 14px;font-size:15px;line-height:1.6;color:var(--ghost);text-decoration:none}
+.sn b{color:#ffe9a8;margin-right:6px}
+.sn.link:hover{border-color:var(--gold);background:rgba(43,30,82,.8)}
+/* 打字、手寫作答 */
+:root{--pad-bg:#fffaf0;--pad-grid:rgba(184,138,42,.55);--pad-guide:rgba(91,143,76,.35)}
+.free{display:flex;flex-direction:column;gap:10px}
+.free textarea,.free input[type=text]{width:100%;font-size:20px;padding:12px;border-radius:12px;border:2px solid #b58f4c;background:#fffdf4;color:#3a2614;font-family:var(--sans);resize:vertical}
+.free textarea{min-height:110px}
+.cells-wrap{height:min(46vh,340px);display:flex}
+.cells{flex:1;min-height:0;display:grid;gap:12px;justify-content:center;align-content:center}
+.cell-box{display:flex;flex-direction:column;gap:4px;width:var(--cell)}
+canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--pad-bg);border:2px solid var(--gold);border-radius:6px}
+.cell-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:3px;height:48px}
+.cell-tools button{padding:0 .1em;font-size:1.05rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;border-radius:8px;border:1.5px solid rgba(232,193,90,.5);background:rgba(43,30,82,.85);color:var(--ghost)}
+.cell-tools button span{font-size:.72rem;font-weight:600}
+.cell-tools button.on{background:var(--gold);color:var(--ink)}
+.cell-count{display:flex;gap:8px;align-items:center;justify-content:center;font-weight:700}
+.cell-count button{border:1.5px solid rgba(232,193,90,.5);background:rgba(43,30,82,.85);color:var(--ghost);border-radius:10px;padding:6px 14px;font-size:16px}
+.cell-count button.on{background:var(--gold);color:var(--ink)}
+.ink-view{width:100%;height:min(30vh,220px);display:block}
+.model{background:rgba(232,193,90,.14);border:1.5px solid rgba(232,193,90,.6);border-radius:12px;padding:10px 14px;font-size:18px;line-height:1.6}
+.model b{color:#ffe9a8}
+.self-judge{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn-violet{background:linear-gradient(180deg,#9b7fe8,#6b4bb8);color:#fff;box-shadow:0 5px 0 #3f2a7a,0 10px 24px rgba(0,0,0,.4);font-family:var(--serif)}
+.kai{font-family:"TW-Kai","BiauKai","DFKai-SB","標楷體","Kaiti TC",serif}
 .teacher-link{font-size:16px;font-family:var(--serif);font-weight:700;color:#ffe9a8;padding:8px 16px;border-color:rgba(232,193,90,.6);text-decoration:none}
 #hud-time{font-size:13px;margin-top:3px;color:#f6f1ff;opacity:.9}
 .qtimer{position:relative;height:26px;border-radius:999px;background:rgba(20,14,40,.7);border:1.5px solid rgba(232,193,90,.5);overflow:hidden;margin:4px 0 8px}
