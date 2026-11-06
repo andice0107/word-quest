@@ -8,14 +8,20 @@ window.WQSettings = (function () {
     qTimer: false, qSeconds: 30,
     totalTimer: true,
     mode: 'solo',          // solo 單人 / multi 多人
-    merchantProb: 60, tradeSeconds: 60,
+    merchantProb: 30, tradeSeconds: 60,
     fairyProb: 30,
     cardEvery: 5, cardSeconds: 30
   };
   function defaults() { return JSON.parse(JSON.stringify(DEF)); }
   function load() {
     var s = defaults();
-    try { var t = JSON.parse(localStorage.getItem(KEY) || 'null'); if (t) Object.keys(DEF).forEach(function (k) { if (t[k] !== undefined) s[k] = t[k]; }); } catch (e) {}
+    try {
+      var t = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (t) {
+        Object.keys(DEF).forEach(function (k) { if (t[k] !== undefined) s[k] = t[k]; });
+        if (!(t.v >= 2) && t.merchantProb !== undefined) s.merchantProb = Math.round(t.merchantProb / 2); // 2026-11：商人出現機率減半
+      }
+    } catch (e) {}
     return clean(s);
   }
   function clamp(v, a, b, d) { v = Math.round(+v); if (!isFinite(v)) v = d; return Math.max(a, Math.min(b, v)); }
@@ -24,12 +30,12 @@ window.WQSettings = (function () {
     if (['none', 'redraw', 'norepeat'].indexOf(s.repeat) < 0) s.repeat = 'redraw';
     s.qTimer = !!s.qTimer; s.qSeconds = clamp(s.qSeconds, 5, 600, 30);
     s.totalTimer = !!s.totalTimer; s.mode = s.mode === 'multi' ? 'multi' : 'solo';
-    s.merchantProb = clamp(s.merchantProb, 0, 100, 60); s.tradeSeconds = clamp(s.tradeSeconds, 10, 600, 60);
+    s.merchantProb = clamp(s.merchantProb, 0, 100, 30); s.tradeSeconds = clamp(s.tradeSeconds, 10, 600, 60);
     s.fairyProb = clamp(s.fairyProb, 0, 100, 30);
     s.cardEvery = clamp(s.cardEvery, 1, 99, 5); s.cardSeconds = clamp(s.cardSeconds, 5, 300, 30);
     return s;
   }
-  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(clean(s))); } catch (e) {} }
+  function save(s) { try { var o = clean(s); o.v = 2; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
 
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function allKeys(C) { var out = []; C.rooms.forEach(function (r, i) { r.objects.forEach(function (o, j) { out.push(i + '-' + j); }); }); return out; }
@@ -88,9 +94,18 @@ window.WQSettings = (function () {
   /* 田字格題以字計分：一字一格、一字 60 分；手寫作答（整塊手寫板）、打字題整題 100 分 */
   var CHAR_PTS = 60, WHOLE_PTS = 100;
   function perCell(q) { return inputOf(q) === 'draw' && q.kind !== 'write'; }
-  function freePts(q, mark, n) {
+  /* 造句、打字作答：老師從 7 個級距點分數（50～200，每級 25 分） */
+  var TEXT_LEVELS = [50, 75, 100, 125, 150, 175, 200], TEXT_MAX = 200;
+  function freePts(q, mark, n, tp) {
     if (perCell(q)) { n = Math.max(1, n || 1); return mark === true ? CHAR_PTS * n : (typeof mark === 'number' ? CHAR_PTS * Math.round(mark * n) : 0); }
+    if (inputOf(q) === 'text') return mark === false ? 0 : (+tp || (mark === true ? TEXT_MAX : 0));
     return mark === true ? WHOLE_PTS : 0;
+  }
+  /* 這一題的滿分（傳送門卡自動過關就拿這個分數） */
+  function maxPts(q, n) {
+    if (perCell(q)) return CHAR_PTS * Math.max(1, n || cellCount(q));
+    if (inputOf(q) === 'text') return TEXT_MAX;
+    return WHOLE_PTS;
   }
   /* 每個字的對錯 → 整題標記：全對 true、全錯 false、部分對為比例；還有沒批改的字回傳 undefined */
   function markFromCells(cm, n) {
@@ -160,5 +175,5 @@ window.WQSettings = (function () {
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
-    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, needsTeacher: needsTeacher, heroName: heroName };
+    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, needsTeacher: needsTeacher, heroName: heroName };
 })();

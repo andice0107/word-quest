@@ -294,3 +294,11 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 .mon-grid{flex:1;align-content:start;align-items:start}
 .mon-grid canvas.gink{height:170px}
 .mon-grid .gtext{font-size:24px}
+/* 選擇題：先選再送出 */
+.p-opt.sel{border-color:#ffe066;box-shadow:0 0 0 3px rgba(255,224,102,.55),0 0 18px rgba(255,224,102,.35);background:linear-gradient(180deg,rgba(130,100,40,.85),rgba(90,66,30,.9))}
+.p-send{display:block;width:100%;margin-top:12px}
+.p-send:disabled{opacity:.45}
+.fb.frozen{font-size:18px}
+/* 造句分數級距 */
+.levels{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.levels button{min-width:44px;padding:5px 7px}

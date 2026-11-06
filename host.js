@@ -220,7 +220,8 @@
       var wrong = Q.options.map(function (_, k) { return k; }).filter(function (k) { return k !== Q.answer; });
       cur.removed = WQSettings.shuffle(wrong).slice(0, Q.options.length >= 4 ? 2 : 1);
     }
-    if (n.skip) { cur.done = true; cur.correct = true; cur.mark = true; cur.pts = n.frozen ? 0 : 100; p.score += cur.pts; }
+    if (n.frozen) { cur.done = true; if (n.skip) keep.skip = true; if (n.lucky) keep.lucky = true; cur.skip = false; cur.lucky = false; } // 冰凍：這一題不能作答，傳送門與四葉草留到下一題
+    else if (n.skip) { cur.done = true; cur.correct = true; cur.mark = true; cur.pts = WQSettings.maxPts(Q); p.score += cur.pts; }
     p.next = keep;
     return cur;
   }
@@ -233,17 +234,17 @@
     checkAllDone();
   }
   function answer(p, k, qi) {
-    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.done) return;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.done || p.cur.frozen) return;
     var Q = G.seq[G.qi].o.q, cur = p.cur;
     if (!(k >= 0 && k < Q.options.length) || cur.tries.indexOf(k) >= 0 || cur.removed.indexOf(k) >= 0) return;
     cur.ms = Math.round(G.q.ms);
     if (k === Q.answer) {
       var wrongN = Math.max(0, cur.tries.length - (cur.second ? 1 : 0));
       cur.correct = true; cur.done = true; cur.tries.push(k);
-      cur.pts = cur.frozen ? 0 : ([100, 60, 30][wrongN] || 30) + (cur.lucky ? 50 : 0);
-      if (!cur.frozen) { G.q.order.push(p.pid); cur.sp = G.q.order.length; cur.bonus = [30, 20, 10][cur.sp - 1] || 0; }
+      cur.pts = ([100, 60, 30][wrongN] || 30) * (cur.lucky ? 2 : 1);
+      G.q.order.push(p.pid); cur.sp = G.q.order.length; cur.bonus = [30, 20, 10][cur.sp - 1] || 0;
       p.score += cur.pts + cur.bonus;
-      fx(p.pid, 'good', cur.frozen ? '答對了！可惜你被冰凍了，這題拿不到分數。' : ('答對了！+' + cur.pts + (cur.bonus ? '，你是第 ' + cur.sp + ' 位答對的勇者，速度加分 +' + cur.bonus : '')));
+      fx(p.pid, 'good', '答對了！+' + cur.pts + (cur.lucky ? '（🍀 四葉草加倍）' : '') + (cur.bonus ? '，你是第 ' + cur.sp + ' 位答對的勇者，速度加分 +' + cur.bonus : ''));
     } else {
       cur.tries.push(k);
       var eff = cur.tries.length - (cur.second ? 1 : 0), max = Q.options.length > 3 ? 3 : 2;
@@ -291,7 +292,7 @@
   /* ---------- 打字、手寫題：學生送出 → 老師批改 → 公布答案 ---------- */
   function submitFree(p, v, qi) {
     var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
-    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || !Q || WQSettings.isChoice(Q)) return;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || p.cur.frozen || !Q || WQSettings.isChoice(Q)) return;
     if (typeof v === 'string') v = v.slice(0, 600); else if (!v || !v.c) return;
     p.cur.sub = { v: v, at: Math.round(G.q.ms) }; p.cur.ms = p.cur.sub.at; p.cur.done = true; p.cur.draft = null;
     fx(p.pid, 'good', '已送出！時間結束前還可以修改再送出。');
@@ -300,7 +301,7 @@
   /* 學生作答中的草稿（給老師的全班監控版看，不算送出） */
   function draftFree(p, v, qi) {
     var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
-    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || !Q || WQSettings.isChoice(Q)) return;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || p.cur.frozen || !Q || WQSettings.isChoice(Q)) return;
     if (typeof v === 'string') v = v.slice(0, 600); else if (!v || !v.c) return;
     p.cur.draft = { v: v, at: Math.round(G.q.ms) }; monTile(p);
   }
@@ -353,6 +354,11 @@
         ab.appendChild(row);
         var right = cm.filter(function (x) { return x === true; }).length;
         ab.appendChild(el('span', 'cm-sum', c.mark === undefined ? '每個字都批改後計分' : '對 ' + right + ' / ' + n + ' 字・' + WQSettings.freePts(Q, c.mark, n) + ' 分'));
+      } else if (WQSettings.inputOf(Q) === 'text') {
+        var lv = el('div', 'levels');
+        lv.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 0', function () { c.tp = 0; c.mark = false; redraw(); }));
+        WQSettings.TEXT_LEVELS.forEach(function (v) { lv.appendChild(btn('gok' + (c.mark !== false && c.tp === v ? ' on' : ''), String(v), function () { c.tp = v; c.mark = true; redraw(); })); });
+        ab.appendChild(lv);
       } else {
         ab.appendChild(btn('gok' + (c.mark === true ? ' on' : ''), '✔ 對', function () { setCells(c, Q, true); redraw(); }));
         ab.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 錯', function () { setCells(c, Q, false); redraw(); }));
@@ -372,13 +378,13 @@
     var mdl = el('div', 'model'); mdl.appendChild(el('b', '', '參考答案：')); var ms = el('span', 'kai', WQSettings.answerShow(Q) || '（老師判斷）'); mdl.appendChild(ms);
     var eye = btn('hbtn', '顯示', function () { mdl.classList.toggle('blur'); eye.textContent = mdl.classList.contains('blur') ? '顯示' : '隱藏'; }); mdl.classList.add('blur'); mdl.appendChild(eye);
     info.appendChild(mdl);
-    info.appendChild(el('div', 'mute', WQSettings.perCell(Q) ? '一個字一格，每個字分開批改：一字 ' + WQSettings.CHAR_PTS + ' 分。' : '整題批改：答對 100 分。'));
+    info.appendChild(el('div', 'mute', WQSettings.perCell(Q) ? '一個字一格，每個字分開批改：一字 ' + WQSettings.CHAR_PTS + ' 分。' : (WQSettings.inputOf(Q) === 'text' ? '依內容點選分數：50～200 分（每級 25 分），沒寫或不對點 0。' : '整題批改：答對 100 分。')));
     top.appendChild(info); w.appendChild(top);
     var bar = el('div', 'grade-bar');
     maskBar(bar, renderGrade);
     bar.appendChild(btn('hbtn', '未批改的全部標對', function () {
       list().forEach(function (p) { var c = p.cur; if (!c || !c.sub || c.skip || c.mark !== undefined) return;
-        if (WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { var a = (c.cm || []).slice(); for (var i = 0; i < nCells(c); i++) if (a[i] !== false) a[i] = true; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); } else setCells(c, Q, true); });
+        if (WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { var a = (c.cm || []).slice(); for (var i = 0; i < nCells(c); i++) if (a[i] !== false) a[i] = true; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); } else { setCells(c, Q, true); if (WQSettings.inputOf(Q) === 'text') c.tp = WQSettings.TEXT_MAX; } });
       renderGrade();
     }));
     var left = list().filter(function (p) { return p.cur && p.cur.sub && !p.cur.skip && p.cur.mark === undefined; }).length;
@@ -434,8 +440,8 @@
       okList.forEach(function (p) {
         var c = p.cur, n = nCells(c), all = c.mark === true;
         c.correct = all; c.ct = WQSettings.perCell(Q) && typeof c.sub.v !== 'string' ? n : 0; c.cr = c.ct ? (c.cm || []).filter(function (x) { return x === true; }).length : 0;
-        c.pts = c.frozen ? 0 : WQSettings.freePts(Q, c.mark, n) + (c.lucky && all ? 50 : 0);
-        if (!c.frozen && all) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
+        c.pts = WQSettings.freePts(Q, c.mark, n, c.tp) * (c.lucky ? 2 : 1);
+        if (all) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
         p.score += c.pts + (c.bonus || 0);
       });
       list().forEach(function (p) { var c = p.cur; if (c && c.sub && c.mark === false && WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { c.ct = nCells(c); c.cr = 0; } });
@@ -756,7 +762,7 @@
       else if (r.sub) { var lc = el('canvas', 'gink small'); tt.appendChild(lc); paintInk(lc, r.sub, lq); }
       if (!r.tries.length && !r.skip && !r.sub) tt.appendChild(el('span', '', '沒有作答'));
       tr.appendChild(tt);
-      tr.appendChild(el('td', r.correct ? 'ok' : 'ng', r.correct ? '✔ 答對' + (r.frozen ? '（冰凍）' : '') : '✘ 未答對'));
+      tr.appendChild(el('td', r.correct ? 'ok' : 'ng', r.frozen ? '❄️ 被冰凍' : (r.correct ? '✔ 答對' : (r.pts ? '◐ 部分答對 +' + r.pts : '✘ 未答對'))));
       tr.appendChild(el('td', '', String(r.pts))); tr.appendChild(el('td', '', r.bonus ? '+' + r.bonus + '（第 ' + r.sp + ' 位）' : '—'));
       tr.appendChild(el('td', '', r.ms ? (r.ms / 1000).toFixed(1) + ' 秒' : '—'));
       tb2.appendChild(tr);

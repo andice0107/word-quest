@@ -333,3 +333,8 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
 .gitem .cell-marks button{min-width:40px;padding:6px 10px;border-radius:8px;border:1.5px solid rgba(232,193,90,.5);background:transparent;color:#f6efff;font-size:17px;cursor:pointer}
 .gitem .cell-marks button.on{background:#e8c15a;color:#2a1d3d}
 .gitem .gbtns{flex-wrap:wrap}
+/* 選擇題：先選再送出 */
+.opt.sel{border-color:#ffe066;box-shadow:0 0 0 3px rgba(255,224,102,.55),0 0 16px rgba(255,224,102,.35)}
+.opt-go{display:block;margin:12px auto 0;min-width:200px}
+.opt-go:disabled{opacity:.45;cursor:default}
+.gitem .levels button{min-width:52px}

@@ -290,11 +290,15 @@
       var b = el('button', 'opt'); b.type = 'button'; b.dataset.k = k;
       b.appendChild(el('span', 'k', String(k + 1))); b.appendChild(el('span', '', t));
       if (w.indexOf(k) >= 0) { b.classList.add('wrong'); b.disabled = true; }
-      b.addEventListener('click', function () { answer(k, b); });
+      b.addEventListener('click', function () { pick(k); });
       wrap.appendChild(b);
     });
     $('m-body').appendChild(wrap);
-    $('m-keyhint').textContent = '可按數字鍵 1 - ' + q.options.length + ' 作答';
+    /* 先選答案，按「送出答案」才算；送出前可以改 */
+    var go = el('button', 'btn btn-gold opt-go', '送出答案'); go.type = 'button'; go.id = 'opt-go'; go.disabled = true;
+    go.addEventListener('click', function () { if (!cur || cur.done || cur.sel == null) return; var k = cur.sel, b = $('m-body').querySelector('.opt[data-k="' + k + '"]'); cur.sel = null; markSel(); answer(k, b); });
+    $('m-body').appendChild(go);
+    $('m-keyhint').textContent = '可按數字鍵 1 - ' + q.options.length + ' 選答案，按 Enter 送出';
     if (w.length === 1) feedback('hint', '提示', q.hint1); else if (w.length >= 2) feedback('hint', '更明確的提示', q.hint2);
     overlay('modal', true); $('modal-card').scrollTop = 0;
     startQTimer();
@@ -362,7 +366,7 @@
     play('open'); updGrade();
     var ref = WQSettings.answerShow(q);
     feedback('hint', (auto ? '時間到，已自動交出你寫的答案。' : '') + '📝 答案已交給老師批改',
-      (WQSettings.perCell(q) ? '老師會一個字一個字批改，每寫對一個字加 ' + WQSettings.CHAR_PTS + ' 分。' : '老師批改答對後，會再加 100 分。') + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
+      (WQSettings.perCell(q) ? '老師會一個字一個字批改，每寫對一個字加 ' + WQSettings.CHAR_PTS + ' 分。' : (WQSettings.inputOf(q) === 'text' ? '老師會依內容給 50～200 分。' : '老師批改答對後，會再加 100 分。')) + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
     finishQ(o);
   }
 
@@ -386,8 +390,8 @@
         it.ink.ensureKai(g).then(function () { it.ink.paintInkThumb(cv, it.v, op); });
       }
       var bs = el('div', 'gbtns'), per = WQSettings.perCell(q) && typeof it.v !== 'string', n = per ? Math.max(1, it.v.n || 1) : 1;
-      function done(mark) {
-        it.mark = mark; var pts = WQSettings.freePts(q, mark, n); it.pts = pts;
+      function done(mark, tp) {
+        it.mark = mark; var pts = WQSettings.freePts(q, mark, n, tp); it.pts = pts;
         if (mark === true) S.firstTry++; else { S.revealed++; S.review.push(it.o.word); }
         if (pts) addScore(pts); play(pts ? 'correct' : 'wrong'); afterGrade();
       }
@@ -404,6 +408,11 @@
           row.appendChild(c);
         })(ci);
         bs.appendChild(row); bs.appendChild(el('span', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分，每個字都批改後計分'));
+      } else if (it.mark === null && WQSettings.inputOf(q) === 'text') {
+        var lv = el('div', 'cell-marks levels');
+        var z = el('button', '', '✘ 0'); z.type = 'button'; z.onclick = function () { done(false, 0); }; lv.appendChild(z);
+        WQSettings.TEXT_LEVELS.forEach(function (v) { var b = el('button', '', String(v)); b.type = 'button'; b.onclick = function () { done(true, v); }; lv.appendChild(b); });
+        bs.appendChild(lv); bs.appendChild(el('span', 'mute', '依內容點選分數：50～200 分'));
       } else if (it.mark === null) {
         var ok = el('button', 'btn btn-gold', '✔ 對'), ng = el('button', 'btn btn-violet', '✘ 錯'); ok.type = ng.type = 'button';
         ok.onclick = function () { done(true); };
@@ -440,6 +449,7 @@
   function timeUp() {
     if (!cur || cur.kind !== 'q' || cur.done) return;
     var o = ROOMS[S.room].objects[cur.j], q = o.q, ch = WQSettings.isChoice(q);
+    if (ch && cur.sel != null) { var sk = cur.sel; cur.sel = null; answer(sk, $('m-body').querySelector('.opt[data-k="' + sk + '"]')); if (cur && !cur.done) return timeUp(); return; }
     if (WQSettings.needsTeacher(q)) {
       var v = null;
       if (cur.cells && cur.ink) { v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }) }; if (!cur.ink.hasInk(v)) v = null; }
@@ -451,6 +461,15 @@
     $('m-body').querySelectorAll('button, textarea, input').forEach(function (b) { b.disabled = true; });
     if (cur.cells) cur.cells.forEach(function (c) { c.setEnabled(false); });
     feedback('reveal', '時間到！黑貓幫你解開了咒語：正確答案是「' + (ch ? q.options[q.answer] : WQSettings.answerShow(q)) + '」', q.explain, o.clue); finishQ(o);
+  }
+  function pick(k) {
+    if (!cur || cur.kind !== 'q' || cur.done) return;
+    var b = $('m-body').querySelector('.opt[data-k="' + k + '"]'); if (!b || b.disabled) return;
+    play('tap'); cur.sel = k; markSel();
+  }
+  function markSel() {
+    $('m-body').querySelectorAll('.opt').forEach(function (b) { b.classList.toggle('sel', cur && cur.sel === +b.dataset.k && !b.disabled); });
+    var g = $('opt-go'); if (g) { g.disabled = !cur || cur.done || cur.sel == null; g.classList.toggle('hidden', !cur || cur.done); }
   }
   function answer(k, btn) {
     if (!cur || cur.kind !== 'q' || cur.done) return;
@@ -476,7 +495,7 @@
     }
   }
   function finishQ(o) {
-    stopQTimer(); if (cur) cur.pending = false;
+    stopQTimer(); if (cur) cur.pending = false; markSel();
     S.solved[S.room][cur.j] = true; S.notes[S.room].push({ from: o.name, text: o.clue }); S.unread++; step();
     $('m-continue').textContent = '繼續探索'; $('m-continue').classList.remove('hidden'); $('m-keyhint').textContent = '';
     setTimeout(function () { $('m-feedback').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
@@ -710,6 +729,7 @@
     if (e.key === 'Escape') { if (!$('notes').classList.contains('hidden')) return overlay('notes', false); if (!$('modal').classList.contains('hidden')) return closeModal(); }
     if ($('modal').classList.contains('hidden') || !cur || cur.done) return;
     if (cur.kind === 'q' && /^[1-9]$/.test(e.key)) { var b = $('m-body').querySelector('.opt[data-k="' + (+e.key - 1) + '"]'); if (b && !b.disabled) { b.click(); e.preventDefault(); } }
+    if (cur.kind === 'q' && e.key === 'Enter' && $('opt-go') && !$('opt-go').disabled) { $('opt-go').click(); e.preventDefault(); }
     else if (codeKeys && codeKeys(e)) e.preventDefault();
   });
   $('app').addEventListener('contextmenu', function (e) { e.preventDefault(); });

@@ -110,7 +110,7 @@
     if (S.ph === 'question') { var n = S.players.filter(function (p) { return p.cur && p.cur.d; }).length; pill('已作答 ' + n + ' / ' + S.players.length); }
     if (S.ph !== 'end' && S.ph !== 'lobby') pill('🔮 ' + (S.untilCards === S.cardEvery ? '這關結束後' : '再 ' + S.untilCards + ' 關') + '是魔法卡時刻');
     if (mine.streak >= 2) pill('🔥 連續答對 ' + mine.streak);
-    var NX = { skip: '🌀 下一關自動過關', fifty: '👁️ 下一題消除選項', second: '🪶 下一題有復活羽毛', lucky: '🍀 下一題 +50', frozen: '❄️ 下一題被冰凍' };
+    var NX = { skip: '🌀 下一關自動過關', fifty: '👁️ 下一題消除選項', second: '🪶 下一題有復活羽毛', lucky: '🍀 下一題答對得分加倍', frozen: '❄️ 下一題被冰凍' };
     (mine.next || []).forEach(function (k) { if (NX[k]) pill(NX[k], k === 'frozen' ? 'warn' : ''); });
     if (mine.cards.indexOf('shield') >= 0) pill('🛡️ 守護盾保護中'); if (mine.cards.indexOf('mirror') >= 0) pill('🪞 反射魔鏡保護中');
   }
@@ -168,15 +168,27 @@
     if (S.ph === 'merchant' && V.buys) updMerchant();
   }
 
+  function frozenCard(c) {
+    var f = el('div', 'fb bad frozen'); f.appendChild(el('b', '', '❄️ 你被冰凍了！')); f.appendChild(el('span', '', '這一題不能作答，等其他勇者做完或時間到。')); c.appendChild(f);
+  }
   function buildQuestion(c) {
-    var q = S.q; c.appendChild(el('div', 'mute', q.speaker + '・' + q.type));
+    var q = S.q, qi = S.qi; c.appendChild(el('div', 'mute', q.speaker + '・' + q.type));
     c.appendChild(el('div', 'p-prompt', q.prompt));
-    var short = q.options.every(function (t) { return t.length <= 6; }), w = el('div', 'p-opts' + (short ? ' grid' : '')); V.opts = [];
+    if (mine.cur && mine.cur.fz) return frozenCard(c);
+    var short = q.options.every(function (t) { return t.length <= 6; }), w = el('div', 'p-opts' + (short ? ' grid' : '')); V.opts = []; V.sel = null;
     q.options.forEach(function (t, k) {
-      var b = btn('p-opt', '', function () { if (S.paused) return toast('老師暫停中，等一下再作答。'); if (b.disabled) return; WQSfx.play('tap'); b.disabled = true; send('ans', { k: k, qi: S.qi }); });
+      var b = btn('p-opt', '', function () { if (b.disabled) return; WQSfx.play('tap'); V.sel = k; updQuestion(); });
       b.appendChild(el('span', 'k', String(k + 1))); b.appendChild(el('span', '', t)); w.appendChild(b); V.opts.push(b);
     });
-    c.appendChild(w); V.fb = el('div', 'fb hidden'); c.appendChild(V.fb);
+    c.appendChild(w);
+    /* 先選答案，按「送出答案」才算；送出前可以改 */
+    var go = btn('btn btn-gold p-send', '送出答案', function () {
+      var auto = go.dataset.auto; go.dataset.auto = '';
+      if (S.paused) return auto ? null : toast('老師暫停中，等一下再作答。');
+      if (V.sel == null) return auto ? null : toast('先點一個答案，再按送出。');
+      var k = V.sel; V.sel = null; WQSfx.play('tap'); send('ans', { k: k, qi: qi }); V.opts[k].disabled = true; updQuestion();
+    }); go.id = 'opt-go'; V.go = go; c.appendChild(go);
+    V.fb = el('div', 'fb hidden'); c.appendChild(V.fb);
     selfMask(c, w);
   }
   function updQuestion() {
@@ -186,7 +198,10 @@
       b.classList.toggle('gone', gone); b.classList.toggle('wrong', tried && !(cu.c && k === cu.t[cu.t.length - 1]));
       b.classList.toggle('correct', !!(cu.c && tried && k === cu.t[cu.t.length - 1]));
       b.disabled = cu.d || tried || gone;
+      b.classList.toggle('sel', V.sel === k && !b.disabled);
     });
+    if (V.sel != null && V.opts[V.sel] && V.opts[V.sel].disabled) V.sel = null;
+    if (V.go) { V.go.disabled = !!cu.d || V.sel == null; V.go.classList.toggle('hidden', !!cu.d); }
     var f = V.fb, eff = cu.t.length - (cu.sc ? 1 : 0); f.className = 'fb'; f.innerHTML = '';
     if (cu.sk) { f.classList.add('good'); f.appendChild(el('b', '', '🌀 傳送門卡生效！這關自動過關 +' + cu.pts)); }
     else if (cu.d && cu.c) { f.classList.add('good'); f.appendChild(el('b', '', cu.fz ? '答對了！但你被冰凍，這題沒有分數。' : '答對了！+' + cu.pts + (cu.b ? '　⚡ 第 ' + cu.sp + ' 位答對 +' + cu.b : ''))); f.appendChild(el('span', '', '等待其他勇者作答……')); }
@@ -204,7 +219,8 @@
     c.appendChild(el('div', 'mute', q.speaker + '・' + q.label));
     c.appendChild(el('div', 'p-prompt', q.prompt));
     var box = el('div', 'free'); c.appendChild(box);
-    if (cu.sk) { box.appendChild(el('div', 'fb good', '🌀 傳送門卡生效！這關自動過關。')); return; }
+    if (cu.sk) { box.appendChild(el('div', 'fb good', '🌀 傳送門卡生效！這關自動過關 +' + (cu.pts || 0) + '。')); return; }
+    if (cu.fz) return frozenCard(box);
     var go = btn('btn btn-gold', '送出答案', function () {
       var auto = go.dataset.auto; go.dataset.auto = '';
       if (S.paused) return toast('老師暫停中，等一下再送出。');

@@ -5,20 +5,20 @@ window.WQCards = (function () {
   var LIB = [
     { id: 'avg', name: '平均天秤卡', icon: '⚖️', price: 120, kind: 'now', color: '#4a7bd4', desc: '把自己的分數變成全體勇者的平均分數。' },
     { id: 'swap1', name: '王座交換卡', icon: '👑', price: 400, kind: 'now', color: '#e8c15a', desc: '和第一名的勇者互換分數。' },
-    { id: 'storm', name: '魔法風暴卡', icon: '🌪️', price: 450, kind: 'now', color: '#6b4bb8', desc: '除了自己以外，所有勇者的分數減一半。' },
-    { id: 'boost', name: '能量藥水卡', icon: '🧪', price: 250, kind: 'now', color: '#3aa36b', desc: '自己的分數增加 50%。' },
-    { id: 'double', name: '雙倍魔法卡', icon: '✨', price: 500, kind: 'now', color: '#f28c28', desc: '自己的分數增加一倍。' },
-    { id: 'skip', name: '傳送門卡', icon: '🌀', price: 150, kind: 'next', color: '#2aa7a0', desc: '下一關自動過關，直接拿到 100 分。' },
-    { id: 'steal', name: '盜賊之手卡', icon: '🖐️', price: 200, kind: 'now', color: '#7a4b2a', desc: '隨機指定一位勇者，搶走他的一張魔法卡。' },
+    { id: 'storm', name: '魔法風暴卡', icon: '🌪️', price: 500, kind: 'now', color: '#6b4bb8', desc: '除了自己以外，所有勇者的分數減一半。' },
+    { id: 'boost', name: '能量藥水卡', icon: '🧪', price: 300, kind: 'now', color: '#3aa36b', desc: '自己的總分增加 50%。' },
+    { id: 'double', name: '雙倍魔法卡', icon: '✨', price: 400, kind: 'now', color: '#f28c28', desc: '自己的總分增加一倍。' },
+    { id: 'skip', name: '傳送門卡', icon: '🌀', price: 120, kind: 'next', color: '#2aa7a0', desc: '下一關自動過關，直接拿到這一題的滿分（選擇題 100、寫 3 個字 180、造句 200）。' },
+    { id: 'steal', name: '盜賊之手卡', icon: '🖐️', price: 150, kind: 'now', color: '#7a4b2a', desc: '隨機指定一位勇者，搶走他的一張魔法卡。' },
     { id: 'shield', name: '守護盾卡', icon: '🛡️', price: 150, kind: 'passive', color: '#5c6b7a', desc: '帶在身上就會自動擋下一次別人的攻擊魔法。' },
     { id: 'mirror', name: '反射魔鏡卡', icon: '🪞', price: 250, kind: 'passive', color: '#8f6fe0', desc: '帶在身上，下一次被攻擊時把魔法反彈給施法者。' },
     { id: 'fifty', name: '消除魔眼卡', icon: '👁️', price: 80, kind: 'next', color: '#c2417b', desc: '下一題先幫你刪掉錯誤的選項。' },
-    { id: 'second', name: '復活羽毛卡', icon: '🪶', price: 100, kind: 'next', color: '#f2a0c0', desc: '下一題答錯第一次不扣分，還能拿滿分。' },
-    { id: 'freeze', name: '冰凍咒語卡', icon: '❄️', price: 200, kind: 'target', color: '#6fc7ff', desc: '指定一位勇者，他下一題答對也拿不到分數。' },
-    { id: 'dice', name: '命運骰子卡', icon: '🎲', price: 100, kind: 'now', color: '#d9534f', desc: '擲骰子，點數 × 30 分加給自己。' },
+    { id: 'second', name: '復活羽毛卡', icon: '🪶', price: 180, kind: 'next', color: '#f2a0c0', desc: '下一題答錯第一次不扣分，還能拿滿分。' },
+    { id: 'freeze', name: '冰凍咒語卡', icon: '❄️', price: 200, kind: 'target', color: '#6fc7ff', desc: '指定一位勇者，他下一題被冰凍：不能點、不能寫、不能打字，只能等大家做完或時間到。' },
+    { id: 'dice', name: '命運骰子卡', icon: '🎲', price: 200, kind: 'now', color: '#d9534f', desc: '擲骰子，點數 × 60 分加給自己（60～360 分）。' },
     { id: 'bless', name: '祝福分享卡', icon: '🎁', price: 80, kind: 'now', color: '#ff9f6b', desc: '分數最低的勇者加 100 分，自己也加 60 分。' },
-    { id: 'thunder', name: '雷擊卡', icon: '⚡', price: 180, kind: 'target', color: '#ffd34d', desc: '指定一位勇者，扣掉他 100 分。' },
-    { id: 'lucky', name: '幸運四葉草卡', icon: '🍀', price: 120, kind: 'next', color: '#7ee2a8', desc: '下一題答對時，額外再加 50 分。' }
+    { id: 'thunder', name: '雷擊卡', icon: '⚡', price: 150, kind: 'target', color: '#ffd34d', desc: '指定一位勇者，扣掉他 200 分。' },
+    { id: 'lucky', name: '幸運四葉草卡', icon: '🍀', price: 120, kind: 'next', color: '#7ee2a8', desc: '下一題答對時，這題得分加倍。' }
   ];
   var BY = {}; LIB.forEach(function (c) { BY[c.id] = c; });
   var HAND_MAX = 6;
@@ -103,12 +103,12 @@ window.WQCards = (function () {
         var d3 = defend(tg), victim = tg, word = id === 'freeze' ? '冰凍咒語' : '雷擊';
         if (d3 === 'shield') { lines.push(name(tg) + ' 的守護盾擋下了' + word + '！'); hit[tg.pid] = '守護盾擋下了' + word + '！'; break; }
         if (d3 === 'mirror') { victim = p; lines.push(name(tg) + ' 的反射魔鏡把' + word + '反彈給 ' + name(p) + '！'); hit[tg.pid] = '反射魔鏡反彈了' + word + '！'; }
-        if (id === 'freeze') { victim.next = victim.next || {}; victim.next.frozen = true; lines.push(name(victim) + ' 被冰凍了，下一題答對也拿不到分數！'); }
-        else { var loss = Math.min(100, victim.score); victim.score -= loss; lines.push('轟隆！' + name(victim) + ' 被雷打中，扣 ' + loss + ' 分！'); }
+        if (id === 'freeze') { victim.next = victim.next || {}; victim.next.frozen = true; lines.push(name(victim) + ' 被冰凍了，下一題不能作答！'); }
+        else { var loss = Math.min(200, victim.score); victim.score -= loss; lines.push('轟隆！' + name(victim) + ' 被雷打中，扣 ' + loss + ' 分！'); }
         if (victim !== p) hit[victim.pid] = name(p) + ' 對你使用了「' + c.name + '」！';
         break;
       }
-      case 'dice': { var n = 1 + Math.floor(Math.random() * 6); p.score += n * 30; lines.push(name(p) + ' 擲出了 ' + n + ' 點，加 ' + n * 30 + ' 分！'); return { title: c.name, lines: lines, hit: hit, dice: n }; }
+      case 'dice': { var n = 1 + Math.floor(Math.random() * 6); p.score += n * 60; lines.push(name(p) + ' 擲出了 ' + n + ' 點，加 ' + n * 60 + ' 分！'); return { title: c.name, lines: lines, hit: hit, dice: n }; }
       case 'bless': {
         var low = ranked(others).pop();
         if (low) { low.score += 100; hit[low.pid] = name(p) + ' 送給你祝福，加 100 分！'; lines.push(name(low) + ' 收到祝福加 100 分，'); }
