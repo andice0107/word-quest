@@ -22,23 +22,21 @@
     var f = el('div', 'join');
     var ci = el('input'); ci.placeholder = '冒險代碼（看老師的大螢幕）'; ci.value = code; ci.maxLength = 5; ci.autocapitalize = 'characters'; ci.id = 'j-code';
     if (!code) f.appendChild(ci);
-    var ni = el('input'); ni.placeholder = '你的勇者暱稱（最多 10 個字）'; ni.maxLength = 10; ni.id = 'j-name'; ni.value = saved && saved.name || ''; f.appendChild(ni);
-    f.appendChild(el('div', '', '選擇勇者的性別（造型會隨機分配 8 位元像素勇者）'));
+    f.appendChild(el('div', '', '選擇勇者的性別，系統會送你一位有名字的 8 位元像素勇者。'));
     var g = el('div', 'g'), gm = btn('on', '👦 男生', function () { me.gender = 'm'; gm.classList.add('on'); gf.classList.remove('on'); }), gf = btn('', '👧 女生', function () { me.gender = 'f'; gf.classList.add('on'); gm.classList.remove('on'); });
     gm.id = 'j-m'; gf.id = 'j-f';
     if (saved && saved.gender === 'f') { me.gender = 'f'; gf.classList.add('on'); gm.classList.remove('on'); }
     g.appendChild(gm); g.appendChild(gf); f.appendChild(g);
     f.appendChild(btn('btn btn-gold', '加入冒險', function () {
-      var cd = (code || ci.value).trim().toUpperCase(), nm = ni.value.trim();
+      var cd = (code || ci.value).trim().toUpperCase();
       if (cd.length < 4) return toast('請輸入老師大螢幕上的冒險代碼。', 'bad');
-      if (!nm) return toast('請輸入你的勇者暱稱。', 'bad');
       if (cd !== code) broker = 0;
-      code = cd; me.name = nm; me.pid = (saved && saved.code === cd && saved.pid) || ('p' + Math.random().toString(36).slice(2, 10));
+      code = cd; me.pid = (saved && saved.code === cd && saved.pid) || ('p' + Math.random().toString(36).slice(2, 10));
       save(); connect();
     })).id = 'j-go';
     c.appendChild(f); m.appendChild(c);
   }
-  function save() { try { store.setItem(KEY, JSON.stringify({ code: code, pid: me.pid, name: me.name, gender: me.gender, b: broker })); } catch (e) {} }
+  function save() { try { store.setItem(KEY, JSON.stringify({ code: code, pid: me.pid, gender: me.gender, b: broker })); } catch (e) {} }
   function connect() {
     if (net) net.close();
     msgCard('正在連線到老師的電腦……', '請稍等，連上後你的像素勇者就會出現。');
@@ -46,7 +44,7 @@
       if (s === 'online') hello(); var st = $('net-st'); if (st) st.textContent = s === 'online' ? '' : '連線中…';
     } });
   }
-  function hello() { net.send({ t: 'hello', pid: me.pid, name: me.name, gender: me.gender }); }
+  function hello() { net.send({ t: 'hello', pid: me.pid, gender: me.gender }); }
   setInterval(function () { if (!net) return; if (!joined) hello(); else net.send({ t: 'ping', pid: me.pid }); }, 5000);
   function send(t, extra) { var d = { t: t, pid: me.pid }; Object.keys(extra || {}).forEach(function (k) { d[k] = extra[k]; }); net.send(d); }
 
@@ -57,7 +55,7 @@
     mine = S.players.filter(function (p) { return p.pid === me.pid; })[0];
     if (!mine) { joined = false; hello(); if (!S.players.length || true) msgCard('正在加入冒險……', ''); return; }
     if (!joined) { joined = true; WQSfx.play('join'); }
-    render();
+    render(); sidBox();
   }
   var lastFx = 0;
   function onFx(d) {
@@ -71,12 +69,35 @@
   function toast(t, k) { var x = el('div', 'toast ' + (k || ''), t); document.body.appendChild(x); setTimeout(x.remove.bind(x), 4100); }
   function msgCard(t, p) { var m = $('p-main'); m.innerHTML = ''; var c = el('div', 'p-card'); c.appendChild(el('h2', '', t)); if (p) c.appendChild(el('p', '', p)); m.appendChild(c); sig = ''; }
 
+  /* ---------- 學號：取得勇者後 30 秒內可以加上（只能輸入數字） ---------- */
+  var SB = null, sidSent = false;
+  function sidBox() {
+    var left = mine && !mine.sid && !sidSent ? mine.sidR - (performance.now() - recvAt) : 0;
+    if (left <= 0) { if (SB) { SB.el.remove(); SB = null; } return; }
+    if (!SB) {
+      var b = el('div', 'sid-box'); b.appendChild(el('h3', '', '你的勇者名字是「' + mine.name + '」'));
+      b.appendChild(el('div', 'mute', '可以加上你的學號（只能輸入數字），名字下面會顯示。'));
+      var row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.pattern = '[0-9]*'; inp.maxLength = 10; inp.placeholder = '學號'; inp.id = 'sid-in'; inp.autocomplete = 'off';
+      inp.addEventListener('input', function () { var v = inp.value.replace(/[^0-9]/g, '').slice(0, 10); if (v !== inp.value) inp.value = v; });
+      var ok = btn('btn btn-gold', '確定', function () {
+        var v = inp.value.replace(/[^0-9]/g, '');
+        if (!v) return toast('請輸入數字學號，或不加也可以。');
+        sidSent = true; send('sid', { v: v }); toast('已加上學號（' + v + '）', 'good'); sidBox();
+      }); ok.id = 'sid-go';
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
+      row.appendChild(inp); row.appendChild(ok); b.appendChild(row);
+      var cd = el('div', 'cd', ''); b.appendChild(cd); document.body.appendChild(b);
+      SB = { el: b, cd: cd };
+    }
+    SB.cd.textContent = '⏳ 還有 ' + Math.ceil(left / 1000) + ' 秒，時間到就只顯示勇者名字';
+  }
+
   /* ---------- 畫面 ---------- */
   function remain() { if (!S || !S.timer) return 0; return S.paused ? S.timer.r : S.timer.r - (performance.now() - recvAt); }
   function bar() {
     var b = $('p-bar'); b.classList.remove('hidden'); b.innerHTML = '';
     b.appendChild(WQPixel.img(mine.seed, mine.g));
-    var w = el('div', 'who'); w.appendChild(el('b', '', mine.name)); w.appendChild(el('small', '', WQPixel.className(mine.seed, mine.g) + '・第 ' + mine.rank + ' 名 / ' + S.players.length + ' 人')); b.appendChild(w);
+    var w = el('div', 'who'); w.appendChild(el('b', '', mine.name)); if (mine.sid) w.appendChild(el('span', 'sid', '（' + mine.sid + '）')); w.appendChild(el('small', '', WQPixel.className(mine.seed, mine.g) + '・第 ' + mine.rank + ' 名 / ' + S.players.length + ' 人')); b.appendChild(w);
     var sc = el('div', '', String(mine.score)); sc.id = 'p-score'; sc.appendChild(el('small', '', '分數')); b.appendChild(sc);
     var st = el('span', 'mute', ''); st.id = 'net-st'; b.appendChild(st);
   }
@@ -108,7 +129,7 @@
   function render() {
     $('p-pause').classList.toggle('hidden', !S.paused);
     bar(); info(); hand();
-    var s = [S.ph, S.adv, S.qi, S.turn ? S.turn.idx : '', S.effect ? S.effect.n : '', S.fairy ? 1 : 0, S.q && S.q.answer, S.merchant ? 1 : 0, S.story].join('|');
+    var s = [S.ph, S.adv, S.qi, S.turn ? S.turn.idx : '', S.effect ? S.effect.n : '', S.fairy ? 1 : 0, S.q && S.q.answer, S.merchant ? 1 : 0, S.story, mine.sid].join('|');
     if (s !== sig) { sig = s; build(); } else update();
   }
   var V = {};
@@ -117,7 +138,7 @@
     var c = el('div', 'p-card'); m.appendChild(c);
     switch (S.ph) {
       case 'lobby': {
-        var me2 = el('div', 'p-me'); me2.appendChild(WQPixel.img(mine.seed, mine.g)); me2.appendChild(el('h2', '', mine.name));
+        var me2 = el('div', 'p-me'); me2.appendChild(el('h2', '', mine.name)); if (mine.sid) me2.appendChild(el('div', 'sid', '（' + mine.sid + '）')); me2.appendChild(WQPixel.img(mine.seed, mine.g));
         me2.appendChild(el('p', '', '你是「' + WQPixel.className(mine.seed, mine.g) + '」！')); me2.appendChild(el('p', 'gold', '已經加入冒險，等待老師開始……'));
         V.cnt = el('p', 'mute', ''); me2.appendChild(V.cnt); c.appendChild(me2); break;
       }
@@ -184,12 +205,15 @@
     var box = el('div', 'free'); c.appendChild(box);
     if (cu.sk) { box.appendChild(el('div', 'fb good', '🌀 傳送門卡生效！這關自動過關。')); return; }
     var go = btn('btn btn-gold', '送出答案', function () {
+      var auto = go.dataset.auto; go.dataset.auto = '';
       if (S.paused) return toast('老師暫停中，等一下再送出。');
       var v;
-      if (q.input === 'draw') { if (!V.cells) return; v = { n: V.n, c: V.cells.map(function (x) { return { s: x.s }; }) }; if (!V.ink.hasInk(v)) return toast('先在格子裡寫好答案再送出喔。'); }
-      else { v = V.text.value.trim(); if (!v) return toast('先輸入答案再送出喔。'); }
+      if (q.input === 'draw') { if (!V.cells) return; v = { n: V.n, c: V.cells.map(function (x) { return { s: x.s }; }) }; if (!V.ink.hasInk(v)) return auto ? null : toast('先在格子裡寫好答案再送出喔。'); }
+      else { v = V.text.value.trim(); if (!v) return auto ? null : toast('先輸入答案再送出喔。'); }
+      if (auto && lastSub && lastSub.qi === qi && lastSub.adv === S.adv && JSON.stringify(lastSub.v) === JSON.stringify(v)) return;
       lastSub = { qi: qi, v: v, adv: S.adv }; send('sub', { qi: qi, v: v }); WQSfx.play('tap');
-    }); go.id = 'free-go';
+      if (auto) toast('時間到，已自動送出你寫的答案。');
+    }); go.id = 'free-go'; V.go = go;
     if (q.input === 'draw') {
       var chooser = el('div', 'cell-count hidden'), wrap = el('div', 'cells-wrap'), cont = el('div'); wrap.appendChild(cont);
       box.appendChild(chooser); box.appendChild(wrap);
@@ -322,6 +346,8 @@
   }
   setInterval(function () {
     if (!S || !mine) return;
+    sidBox();
+    if (S.ph === 'question' && S.timer && S.timer.k === 'q' && !S.paused && V.go && !V.auto && remain() < 1500) { V.auto = true; V.go.dataset.auto = '1'; V.go.click(); }
     var t = $('p-timer'); if (t && S.timer) { var r = remain(); t.textContent = '⏳ ' + Math.ceil(Math.max(0, r) / 1000) + ' 秒'; t.classList.toggle('low', r < 5500); }
     var tt = $('p-total'); if (tt && !S.paused && S.ph !== 'end' && S.ph !== 'gate') tt.textContent = '⏱ ' + fmt(S.elapsed + performance.now() - recvAt);
   }, 250);

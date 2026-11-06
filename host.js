@@ -59,7 +59,7 @@
       room: { name: room.name || '', intro: room.intro || '', n: rit ? rit.ri + 1 : 1 }, q: q, story: G.phase === 'story' ? G.storyStep || 0 : 0,
       untilCards: SET.cardEvery - ((G.qi + 1) % SET.cardEvery), cardEvery: SET.cardEvery, maxP: MAX,
       players: ps.map(function (p) {
-        return { pid: p.pid, name: p.name, g: p.gender, seed: p.seed, score: p.score, rank: rk.indexOf(p) + 1, cards: p.cards, next: Object.keys(p.next || {}),
+        return { pid: p.pid, name: p.name, sid: p.sid || '', sidR: p.sid ? 0 : Math.max(0, p.sidUntil - Date.now()), g: p.gender, seed: p.seed, score: p.score, rank: rk.indexOf(p) + 1, cards: p.cards, next: Object.keys(p.next || {}),
           cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined } : null,
           delta: p.delta || 0, rd: p.rankDelta || 0, correct: p.correct, wrong: p.wrong, streak: p.streak, on: online(p) };
       }),
@@ -75,11 +75,13 @@
     if (d.t === 'hello') {
       if (!p) {
         if (list().length >= MAX) return fx(d.pid, 'full', '這場冒險已經有 ' + MAX + ' 位勇者，人數滿了。');
-        var nm = String(d.name || '勇者').trim().slice(0, 10) || '勇者';
-        p = G.players[d.pid] = { pid: d.pid, name: nm, gender: d.gender === 'f' ? 'f' : 'm', seed: (Math.random() * 2147483647) | 0, joined: ++G.joinN,
+        var gd = d.gender === 'f' ? 'f' : 'm', taken = {}; list().forEach(function (x) { taken[x.name] = 1; });
+        var seed = (Math.random() * 2147483647) | 0;
+        p = G.players[d.pid] = { pid: d.pid, name: WQSettings.heroName(gd, taken, WQPixel.className(seed, gd)), sid: '', sidUntil: Date.now() + SID_MS, gender: gd, seed: seed, joined: ++G.joinN,
           score: 0, cards: [], correct: 0, wrong: 0, streak: 0, best: 0, next: {}, cur: null, delta: 0, room: {}, lastSeen: Date.now() };
         if (G.phase === 'question') p.cur = freshCur(p);
         WQSfx.play('join');
+        setTimeout(function () { if (G.phase === 'lobby') render(); push(); }, SID_MS + 800);
         if (G.phase === 'lobby') render(); else liveUpdate();
       }
       p.lastSeen = Date.now(); push(); return;
@@ -87,6 +89,11 @@
     if (!p) return fx(d.pid, 'gone', '請重新加入冒險。');
     p.lastSeen = Date.now();
     if (d.t === 'ping') return;
+    if (d.t === 'sid') {
+      var v = String(d.v || '');
+      if (!p.sid && /^[0-9]{1,10}$/.test(v) && Date.now() <= p.sidUntil + 3000) { p.sid = v; if (G.phase === 'lobby') render(); else liveUpdate(); }
+      push(); return;
+    }
     if (G.paused && d.t !== 'leave') return fx(p.pid, 'info', '老師暫停中，請稍等一下。');
     if (d.t === 'ans') answer(p, +d.k, +d.qi);
     else if (d.t === 'sub') submitFree(p, d.v, +d.qi);
@@ -97,6 +104,8 @@
   }
 
   /* ---------- 計時（暫停時全部停止） ---------- */
+  var SID_MS = 30000;
+  function who(p) { return p.name + (p.sid ? '（' + p.sid + '）' : ''); }
   function startTimer(kind, ms) { G.timer = { kind: kind, remain: ms, total: ms }; }
   var last = performance.now(), lastSec = -1;
   setInterval(function () {
@@ -155,16 +164,16 @@
     var right = el('div', 'panel roster'); right.appendChild(el('div', 'h-title', C.titleMain ? C.titleMain + '：' + (C.titleSub || '') : (C.title || '')));
     right.appendChild(el('div', 'gold', '')).id = 'roster-count';
     var chips = el('div', 'set-chips');
-    [('抽 ' + G.seq.length + ' 題'), SET.qTimer ? '每題 ' + SET.qSeconds + ' 秒' : '不限時', SET.totalTimer ? '記錄總時間' : '', '商人 ' + SET.merchantProb + '%・交易 ' + SET.tradeSeconds + ' 秒',
+    [('抽 ' + G.seq.length + ' 題'), SET.qTimer ? '每題 ' + SET.qSeconds + ' 秒' : '不限時', '手寫題 60～100 秒・造句 3 分鐘（固定）', SET.totalTimer ? '記錄總時間' : '', '商人 ' + SET.merchantProb + '%・交易 ' + SET.tradeSeconds + ' 秒',
       '精靈 ' + SET.fairyProb + '%', '每 ' + SET.cardEvery + ' 關用一次魔法卡（每人 ' + SET.cardSeconds + ' 秒）', WQSettings.REPEAT_NAMES[SET.repeat]].forEach(function (t) { if (t) chips.appendChild(el('span', '', t)); });
     right.appendChild(chips);
     var grid = el('div', 'roster-grid'); grid.id = 'roster';
     list().forEach(function (p) {
-      var h = el('div', 'hero' + (online(p) ? '' : ' off')); h.appendChild(px(p)); h.appendChild(el('div', 'nm', p.name)); h.appendChild(el('div', 'cl', WQPixel.className(p.seed, p.gender)));
+      var h = el('div', 'hero' + (online(p) ? '' : ' off')); h.appendChild(el('div', 'nm', p.name)); h.appendChild(el('div', 'sid', p.sid ? '（' + p.sid + '）' : (p.sidUntil > Date.now() ? '輸入學號中…' : ''))); h.appendChild(px(p)); h.appendChild(el('div', 'cl', WQPixel.className(p.seed, p.gender)));
       var k = btn('kick', '×', function () { if (confirm('要把「' + p.name + '」移出這場冒險嗎？')) { delete G.players[p.pid]; fx(p.pid, 'kicked', '你已被老師移出這場冒險。'); render(); push(); } }); k.title = '移出'; h.appendChild(k);
       grid.appendChild(h);
     });
-    if (!list().length) grid.appendChild(el('div', 'mute', '等待勇者加入中……學生用平板或手機掃描左邊的 QR code，輸入暱稱、選擇性別就會出現在這裡。'));
+    if (!list().length) grid.appendChild(el('div', 'mute', '等待勇者加入中……學生用平板或手機掃描左邊的 QR code，選擇性別後系統會給一個勇者名字，30 秒內可以加上學號。'));
     right.appendChild(grid);
     var act = el('div', 'lobby-actions');
     act.appendChild(btn('btn btn-gold', '開始冒險', function () { if (!list().length && !confirm('還沒有勇者加入，確定要開始嗎？')) return; G.phase = 'story'; G.storyStep = 0; render(); push(); }, 'h-start'));
@@ -216,7 +225,8 @@
   function startQuestion() {
     G.qi++; var it = G.seq[G.qi]; G.phase = 'question'; G.q = { ms: 0, order: [] };
     var rk = ranked(); list().forEach(function (p) { p.rankBefore = rk.indexOf(p) + 1; p.cur = freshCur(p); });
-    if (SET.qTimer) startTimer('q', SET.qSeconds * 1000); else G.timer = null;
+    var fs = WQSettings.forcedSeconds(it.o.q);
+    if (fs) startTimer('q', fs * 1000); else if (SET.qTimer) startTimer('q', SET.qSeconds * 1000); else G.timer = null;
     setBg(G.rooms[it.ri].bg); render(); push(); WQSfx.play('open');
     checkAllDone();
   }
@@ -262,7 +272,7 @@
     } else c.appendChild(el('div', 'free-tag', (WQSettings.inputOf(Q) === 'draw' ? '✍️ ' : '⌨️ ') + WQSettings.inputLabel(Q) + '：請在自己的裝置上' + (WQSettings.inputOf(Q) === 'draw' ? '手寫' : '打字') + '作答，寫好按「送出」'));
     L.appendChild(c);
     var side = el('div', 'side panel');
-    if (SET.qTimer) {
+    if (G.timer && G.timer.kind === 'q') {
       var ring = el('div', 'ring'); ring.id = 'ring';
       ring.innerHTML = '<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="rgba(20,14,40,.7)" stroke="rgba(232,193,90,.25)" stroke-width="10"/><circle class="f" cx="60" cy="60" r="54" fill="none" stroke="#e8c15a" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg><div class="t"></div>';
       side.appendChild(ring);
@@ -319,7 +329,7 @@
     var guides = null;
     list().forEach(function (p) {
       var c = p.cur || {}, t = el('div', 'gtile' + (c.mark === true ? ' ok' : (c.mark === false ? ' ng' : '')));
-      var h = el('div', 'gh'); h.appendChild(px(p)); h.appendChild(el('span', '', p.name)); if (c.sub) h.appendChild(el('small', 'mute', (c.sub.at / 1000).toFixed(1) + ' 秒')); t.appendChild(h);
+      var h = el('div', 'gh'); h.appendChild(px(p)); h.appendChild(el('span', '', who(p))); if (c.sub) h.appendChild(el('small', 'mute', (c.sub.at / 1000).toFixed(1) + ' 秒')); t.appendChild(h);
       var body = el('div', 'gbody' + (G.mask && !G.opened[p.pid] ? ' masked' : ''));
       if (c.skip) body.appendChild(el('div', 'gtext', '🌀 傳送門卡自動過關'));
       else if (!c.sub) body.appendChild(el('div', 'gtext mute', '沒有作答'));
@@ -361,7 +371,7 @@
       if (c.correct) { p.correct++; p.streak++; p.best = Math.max(p.best, p.streak); } else { p.wrong++; p.streak = 0; }
       var rs = p.room[it.ri] || (p.room[it.ri] = { c: 0, n: 0 }); rs.n++; if (c.correct) rs.c++;
       p.delta = p.score - c.before;
-      res[p.pid] = { name: p.name, tries: c.tries.slice(), correct: c.correct, pts: c.pts, bonus: c.bonus, sp: c.sp, ms: c.ms, skip: c.skip, frozen: c.frozen, sub: c.sub ? c.sub.v : null };
+      res[p.pid] = { name: who(p), tries: c.tries.slice(), correct: c.correct, pts: c.pts, bonus: c.bonus, sp: c.sp, ms: c.ms, skip: c.skip, frozen: c.frozen, sub: c.sub ? c.sub.v : null };
     });
     var rk = ranked(); list().forEach(function (p) { p.rankDelta = (p.rankBefore || rk.length) - (rk.indexOf(p) + 1); });
     G.log.push({ qi: G.qi, room: G.rooms[it.ri].short, name: it.o.name, word: it.o.word, prompt: Q.prompt, options: Q.options || [], answer: Q.answer, q: Q, res: res });
@@ -597,7 +607,7 @@
     [1, 0, 2].forEach(function (i) {
       var p = top[i]; if (!p) return;
       var d = el('div', 'pod p' + (i + 1)); if (i === 0) d.appendChild(el('div', 'crown', '👑'));
-      d.appendChild(px(p)); d.appendChild(el('div', 'nm', p.name)); d.appendChild(el('div', 'sc', p.score + ' 分'));
+      d.appendChild(el('div', 'nm', p.name)); if (p.sid) d.appendChild(el('div', 'sid', '（' + p.sid + '）')); d.appendChild(px(p)); d.appendChild(el('div', 'sc', p.score + ' 分'));
       d.appendChild(el('div', 'blk', String(i + 1))); pd.appendChild(d);
     });
     return pd;
@@ -613,7 +623,7 @@
     w.appendChild(info);
     var t = el('table', 't'); t.style.maxWidth = '760px';
     t.innerHTML = '<thead><tr><th>名次</th><th></th><th>勇者</th><th>分數</th><th>答對</th><th>答錯</th><th>最多連續答對</th></tr></thead>';
-    var tb = el('tbody'); rk.forEach(function (p, i) { var tr = el('tr'); [String(i + 1), '', p.name, String(p.score), String(p.correct), String(p.wrong), String(p.best)].forEach(function (v, j) { var td = el('td', '', v); if (j === 1) td.appendChild(px(p)); tr.appendChild(td); }); tb.appendChild(tr); });
+    var tb = el('tbody'); rk.forEach(function (p, i) { var tr = el('tr'); [String(i + 1), '', who(p), String(p.score), String(p.correct), String(p.wrong), String(p.best)].forEach(function (v, j) { var td = el('td', '', v); if (j === 1) td.appendChild(px(p)); tr.appendChild(td); }); tb.appendChild(tr); });
     t.appendChild(tb); var tw = el('div', 'panel'); tw.style.maxHeight = '32vh'; tw.style.overflow = 'auto'; tw.appendChild(t); w.appendChild(tw);
     var act = el('div', 'lobby-actions');
     if (SET.repeat !== 'none') {
@@ -647,7 +657,7 @@
       var tb = el('tbody');
       ranked().forEach(function (p, i) {
         var tr = el('tr');
-        [String(i + 1), '', p.name, String(p.score), String(p.correct), String(p.wrong), p.streak + '（最多 ' + p.best + '）', p.cards.map(function (id) { return WQCards.get(id).icon; }).join(' ') || '—', online(p) ? '🟢' : '⚪'].forEach(function (v, j) { var td = el('td', '', v); if (j === 1) td.appendChild(px(p)); tr.appendChild(td); });
+        [String(i + 1), '', who(p), String(p.score), String(p.correct), String(p.wrong), p.streak + '（最多 ' + p.best + '）', p.cards.map(function (id) { return WQCards.get(id).icon; }).join(' ') || '—', online(p) ? '🟢' : '⚪'].forEach(function (v, j) { var td = el('td', '', v); if (j === 1) td.appendChild(px(p)); tr.appendChild(td); });
         tb.appendChild(tr);
       });
       t.appendChild(tb); b.appendChild(t);

@@ -261,3 +261,13 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 .gbtns button{flex:1;border:1.5px solid rgba(232,193,90,.4);background:rgba(43,30,82,.85);color:var(--ghost);border-radius:10px;padding:8px;font-weight:900;font-size:16px}
 .gbtns .gok.on{background:#3aa36b;border-color:#7ee2a8}
 .gbtns .gng.on{background:#c0452f;border-color:#ff8a80}
+/* 學號（系統名字下方） */
+.hero .sid,.pod .sid{font-size:13px;color:#ffe9a8;min-height:1em;line-height:1.1}
+.hero .sid:empty{display:none}
+#p-bar .who .sid{display:block;font-size:12px;color:#ffe9a8}
+.p-me .sid{font-size:18px;color:#ffe9a8;margin-top:-4px}
+.sid-box{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:60;width:min(440px,calc(100% - 24px));background:rgba(28,18,56,.96);border:2px solid #e8c15a;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center}
+.sid-box h3{margin:0 0 4px;font-size:18px}
+.sid-box .row{display:flex;gap:8px;margin-top:10px}
+.sid-box input{flex:1;min-width:0;font-size:22px;padding:8px 12px;border-radius:10px;border:1.5px solid rgba(232,193,90,.6);background:#fffaf0;color:#2a1d3d;text-align:center;letter-spacing:2px}
+.sid-box .cd{font-size:14px;color:#ffe9a8;margin-top:6px}

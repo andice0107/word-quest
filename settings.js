@@ -82,6 +82,24 @@ window.WQSettings = (function () {
   function inputOf(q) { return (q && q.input) || 'choice'; }
   function isChoice(q) { var i = inputOf(q); return i === 'choice' || i === 'tf'; }
   function inputLabel(q) { var i = inputOf(q); return i === 'draw' ? (DRAW_KINDS[q.kind] || '手寫') : INPUT_NAMES[i]; }
+  /* 手寫、打字題強制作答時限（秒）：寫國字、寫注音 60；造詞、改錯字、手寫作答 100；造句等打字題 180。填充題照一般設定 */
+  var FORCED = { hanzi: 60, zhuyin: 60, word: 100, correction: 100, write: 100 };
+  function forcedSeconds(q) { var i = inputOf(q); if (i === 'draw') return FORCED[q.kind] || 100; if (i === 'text') return 180; return 0; }
+  function needsTeacher(q) { var i = inputOf(q); return i === 'draw' || i === 'text'; }
+  /* 系統給的勇者名字（短，不重複） */
+  var HERO_A = ['星光', '閃電', '烈火', '冰霜', '疾風', '月影', '雷鳴', '翡翠', '黃金', '銀月', '彩虹', '晨曦', '暴風', '流星', '紫焰', '蒼藍', '旋風', '熾日', '雪花', '琥珀'];
+  var HERO_M = ['騎士', '劍士', '獵人', '法師', '小龍', '巨熊', '戰士', '飛鷹', '遊俠', '獅王'];
+  var HERO_F = ['公主', '魔女', '精靈', '女俠', '仙子', '弓手', '天使', '花仙', '小鳳', '女巫'];
+  var CLS_NOUN = { m: { '騎士': '騎士', '魔法師': '法師', '弓箭手': '弓手', '盜賊': '盜賊', '王子公主': '王子', '冒險家': '遊俠' },
+    f: { '騎士': '女騎士', '魔法師': '魔女', '弓箭手': '弓手', '盜賊': '女俠', '王子公主': '公主', '冒險家': '遊俠' } };
+  function heroName(g, taken, cls) {
+    var noun = cls && CLS_NOUN[g === 'f' ? 'f' : 'm'][cls], B = noun ? [noun] : (g === 'f' ? HERO_F : HERO_M), n;
+    for (var t = 0; t < 300; t++) {
+      if (t === 150) B = g === 'f' ? HERO_F : HERO_M;
+      n = HERO_A[Math.floor(Math.random() * HERO_A.length)] + B[Math.floor(Math.random() * B.length)]; if (!taken[n]) return n;
+    }
+    return n + (Object.keys(taken).length + 1);
+  }
   function prepQ(q) {
     var i = inputOf(q);
     if (i === 'tf') { q.options = ['⭕ 對', '❌ 不對']; q.answer = q.answer === 1 ? 1 : 0; return q; }
@@ -129,5 +147,5 @@ window.WQSettings = (function () {
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
-    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES };
+    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, needsTeacher: needsTeacher, heroName: heroName };
 })();

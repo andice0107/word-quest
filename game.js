@@ -102,7 +102,8 @@
     S = { room: 0, solved: ROOMS.map(function () { return {}; }), seen: ROOMS.map(function () { return {}; }), wrongs: {},
       puzzleDone: ROOMS.map(function () { return false; }), puzzleWrong: ROOMS.map(function () { return 0; }),
       notes: ROOMS.map(function () { return []; }), runes: [], score: 0, shown: 0, steps: 0,
-      firstTry: 0, needHint: 0, revealed: 0, review: [], gateMistakes: 0, start: Date.now(), unread: 0, inGate: false, ended: false };
+      firstTry: 0, needHint: 0, revealed: 0, review: [], gateMistakes: 0, start: Date.now(), unread: 0, inGate: false, ended: false, pending: [] };
+    if (typeof updGrade === 'function') updGrade();
   }
   /* 總時間計時 */
   function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2); }
@@ -352,38 +353,75 @@
     else if (w.length === 2) feedback('hint', '再想想，更明確的提示', q.hint2);
     else { cur.done = true; t.disabled = true; go.disabled = true; S.revealed++; S.review.push(o.word); feedback('reveal', '黑貓幫你解開了咒語：答案是「' + WQSettings.answerShow(q) + '」', q.explain, o.clue); finishQ(o); }
   }
-  /* 手寫、打字題：送出後對照參考答案，自己判斷對錯（多人模式由老師批改） */
-  function judgeFree(o, q, v) {
-    cur.done = true; cur.pending = true; stopQTimer(); $('m-close').classList.add('hidden');
+  /* 手寫、打字題：送出後交給老師批改（不讓學生自己判斷），老師批改對了才加分 */
+  function judgeFree(o, q, v, auto) {
+    cur.done = true; stopQTimer();
     $('m-body').querySelectorAll('button, textarea, input').forEach(function (b) { b.disabled = true; });
     if (cur.cells) cur.cells.forEach(function (c) { c.setEnabled(false); });
-    var m = el('div', 'model'); m.appendChild(el('b', '', '參考答案：')); m.appendChild(el('span', 'kai', WQSettings.answerShow(q) || '（老師判斷）'));
-    if (typeof v !== 'string' && cur.ink && WQSettings.inputOf(q) === 'draw') {
-      var cv = el('canvas', 'ink-view'); m.appendChild(el('div', 'mute', '你寫的答案（淡綠色是範字）：')); m.appendChild(cv);
-      var guides = cur.ink.guideChars(q.kind, q.answerText);
-      cur.ink.ensureKai(guides).then(function () { cur && cur.ink && cur.ink.paintInkThumb(cv, v, { grid: q.kind !== 'write', guides: guides.length ? guides : null }); });
-      requestAnimationFrame(function () { cur.ink.paintInkThumb(cv, v, { grid: q.kind !== 'write', guides: guides.length ? guides : null }); });
-    }
-    $('m-body').appendChild(m);
-    var sj = el('div', 'self-judge'); sj.appendChild(el('div', 'mute', '對照參考答案，你答對了嗎？'));
-    var ok = el('button', 'btn btn-gold', '✔ 我答對了'), ng = el('button', 'btn btn-violet', '✘ 我答錯了'); ok.type = ng.type = 'button'; ok.id = 'judge-ok'; ng.id = 'judge-ng';
-    ok.onclick = function () { sj.remove(); S.firstTry++; var c = center(ok); floatText('+100', c.x, c.y); sparks(c.x, c.y, 18); play('correct'); addScore(100); feedback('good', '咒語啟動！「' + o.word + '」回到魔法書了。', q.explain, o.clue); finishQ(o); };
-    ng.onclick = function () { sj.remove(); S.revealed++; S.review.push(o.word); play('wrong'); feedback('reveal', '沒關係，記住正確答案：「' + WQSettings.answerShow(q) + '」', q.explain, o.clue); finishQ(o); };
-    sj.appendChild(ok); sj.appendChild(ng); $('m-body').appendChild(sj);
-    setTimeout(function () { sj.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
+    S.pending.push({ o: o, q: q, v: v, ink: cur.ink || null, mark: null });
+    play('open'); updGrade();
+    var ref = WQSettings.answerShow(q);
+    feedback('hint', (auto ? '時間到，已自動交出你寫的答案。' : '') + '📝 答案已交給老師批改',
+      '老師批改答對後，會再加 100 分。' + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
+    finishQ(o);
   }
+
+  /* 老師批改（長按才打開，避免學生自己按） */
+  function ungraded() { return S.pending.filter(function (x) { return x.mark === null; }); }
+  function updGrade() {
+    var n = ungraded().length, b = $('btn-grade');
+    b.classList.toggle('hidden', !n); $('grade-badge').textContent = n;
+    var eb = $('end-grade'); if (eb) { eb.classList.toggle('hidden', !n); $('end-grade-n').textContent = n; }
+  }
+  function longPress(btn, fn) {
+    var t = null;
+    function stop() { clearTimeout(t); t = null; btn.classList.remove('pressing'); }
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); btn.classList.add('pressing'); t = setTimeout(function () { stop(); fn(); }, 1500); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
+    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () { if (!btn.classList.contains('pressing')) say('這是老師批改的按鈕，請老師長按 2 秒打開。', 3500); });
+  }
+  function openGrade() {
+    play('open'); var ov = $('grade-ov'), list = $('grade-list'); list.innerHTML = '';
+    S.pending.forEach(function (it, i) {
+      var q = it.q, d = el('div', 'gitem' + (it.mark === true ? ' ok' : it.mark === false ? ' ng' : ''));
+      d.appendChild(el('div', 'gq', (i + 1) + '. ' + WQSettings.inputLabel(q) + '：' + q.prompt));
+      var ref = WQSettings.answerShow(q); if (ref) { var r = el('div', 'gref'); r.appendChild(el('b', '', '參考答案：')); r.appendChild(el('span', 'kai', ref)); d.appendChild(r); }
+      if (typeof it.v === 'string') d.appendChild(el('div', 'gans', it.v));
+      else if (it.ink) {
+        var cv = el('canvas', 'ink-view'), g = it.ink.guideChars(q.kind, q.answerText), op = { grid: q.kind !== 'write', guides: g.length ? g : null };
+        d.appendChild(cv); requestAnimationFrame(function () { it.ink.paintInkThumb(cv, it.v, op); });
+        it.ink.ensureKai(g).then(function () { it.ink.paintInkThumb(cv, it.v, op); });
+      }
+      var bs = el('div', 'gbtns');
+      if (it.mark === null) {
+        var ok = el('button', 'btn btn-gold', '✔ 對'), ng = el('button', 'btn btn-violet', '✘ 錯'); ok.type = ng.type = 'button';
+        ok.onclick = function () { it.mark = true; S.firstTry++; addScore(100); play('correct'); afterGrade(); };
+        ng.onclick = function () { it.mark = false; S.revealed++; S.review.push(it.o.word); play('wrong'); afterGrade(); };
+        bs.appendChild(ok); bs.appendChild(ng);
+      } else bs.appendChild(el('span', 'gres', it.mark ? '✔ 答對（+100）' : '✘ 答錯'));
+      d.appendChild(bs); list.appendChild(d);
+    });
+    if (!S.pending.length) list.appendChild(el('p', 'mute', '目前沒有要批改的答案。'));
+    ov.classList.remove('hidden');
+  }
+  function afterGrade() { updGrade(); openGrade(); if (S.ended) endGame(true); }
+  longPress($('btn-grade'), openGrade);
+  $('grade-close').addEventListener('click', function () { play('tap'); $('grade-ov').classList.add('hidden'); });
 
   /* 每題作答時限 */
   var qt = null;
   function stopQTimer() { clearInterval(qt); qt = null; var b = $('m-timer'); if (b) b.remove(); $('m-close').classList.remove('hidden'); }
   function startQTimer() {
-    stopQTimer(); if (!SET.qTimer) return;
-    var end = Date.now() + SET.qSeconds * 1000, bar = el('div', 'qtimer'), fill = el('i'), txt = el('span');
+    stopQTimer();
+    var o = cur && cur.kind === 'q' ? ROOMS[S.room].objects[cur.j] : null, secs = o ? WQSettings.forcedSeconds(o.q) : 0;
+    if (!secs && !SET.qTimer) return; secs = secs || SET.qSeconds;
+    var end = Date.now() + secs * 1000, bar = el('div', 'qtimer'), fill = el('i'), txt = el('span');
     bar.id = 'm-timer'; bar.appendChild(fill); bar.appendChild(txt); $('m-prompt').parentNode.insertBefore(bar, $('m-prompt'));
     $('m-close').classList.add('hidden');
     function tick() {
       var left = Math.max(0, end - Date.now()), sec = Math.ceil(left / 1000);
-      fill.style.width = (left / (SET.qSeconds * 10)) + '%'; txt.textContent = '⏳ ' + sec + ' 秒';
+      fill.style.width = (left / (secs * 10)) + '%'; txt.textContent = '⏳ ' + sec + ' 秒';
       bar.classList.toggle('low', sec <= 5);
       if (left <= 0) { stopQTimer(); timeUp(); }
     }
@@ -392,6 +430,12 @@
   function timeUp() {
     if (!cur || cur.kind !== 'q' || cur.done) return;
     var o = ROOMS[S.room].objects[cur.j], q = o.q, ch = WQSettings.isChoice(q);
+    if (WQSettings.needsTeacher(q)) {
+      var v = null;
+      if (cur.cells && cur.ink) { v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }) }; if (!cur.ink.hasInk(v)) v = null; }
+      else { var t = $('free-text'); if (t && t.value.trim()) v = t.value.trim(); }
+      if (v) return judgeFree(o, q, v, true);
+    }
     cur.done = true; S.revealed++; S.review.push(o.word); play('wrong');
     $('m-body').querySelectorAll('.opt').forEach(function (b) { b.disabled = true; if (+b.dataset.k === q.answer) b.classList.add('correct'); });
     $('m-body').querySelectorAll('button, textarea, input').forEach(function (b) { b.disabled = true; });
@@ -599,8 +643,9 @@
   }
 
   /* ---------- 結局 ---------- */
-  function endGame() {
-    var sec = Math.round((Date.now() - S.start) / 1000); S.ended = true;
+  function endGame(again) {
+    if (!again) S.endSec = Math.round((Date.now() - S.start) / 1000);
+    var sec = S.endSec; S.ended = true;
     if (SET.repeat === 'norepeat') {
       var used = WQSettings.loadUsed(C); PICKS.forEach(function (k) { if (used.indexOf(k) < 0) used.push(k); }); WQSettings.saveUsed(C, used);
       ULTIMATE = used.length >= ALLQ;
@@ -620,8 +665,10 @@
     var line = el('div', '', best ? (S.score > best ? '新紀錄！比之前的最佳成績 ' + best + ' 分還高！' : '這台裝置的最佳成績：' + best + ' 分') : '這是第一次闖關成功！');
     rv.appendChild(line);
     try { if (S.score > best) localStorage.setItem('wordQuestBest_' + (C.title || ''), S.score); } catch (e) {}
+    updGrade(); if (again) return;
     show('screen-end'); sparks(innerWidth / 2, innerHeight / 3, 50); play('rune');
   }
+  longPress($('end-grade-btn'), openGrade);
   $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0); });
   $('btn-another').addEventListener('click', function () {
     audioOn(); play('tap'); if (ULTIMATE) WQSettings.saveUsed(C, []);

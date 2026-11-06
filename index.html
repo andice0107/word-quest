@@ -54,6 +54,7 @@
       </div>
       <div class="hud-right">
         <div id="hud-score"><span class="lbl">分數</span><span id="score">0</span><span id="hud-time" class="hidden"></span></div>
+        <button id="btn-grade" class="btn-small grade-btn hidden" type="button" aria-label="老師批改" title="老師長按 2 秒打開">📝<span>老師批改</span><span id="grade-badge" class="badge"></span></button>
         <button id="btn-notes" class="btn-small" type="button" aria-label="線索本">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3h11a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <span>線索本</span><span id="notes-badge" class="badge hidden"></span>
@@ -99,9 +100,15 @@
       <div class="final"><span class="lbl">最終分數</span><span id="final-score">0</span></div>
       <div id="end-stats"></div>
       <div id="end-review"></div>
+      <div id="end-grade" class="end-grade hidden">還有 <b id="end-grade-n">0</b> 題手寫／打字題等老師批改，批改答對會再加分。<button id="end-grade-btn" class="btn btn-violet grade-btn" type="button">📝 老師批改（長按 2 秒）</button></div>
       <div class="end-btns"><button id="btn-another" class="btn btn-gold hidden" type="button">接受另一段冒險</button><button id="btn-restart" class="btn btn-gold" type="button">再玩一次</button></div>
     </div>
   </section>
+  <div id="grade-ov" class="grade-ov hidden"><div class="grade-card">
+    <h2>📝 老師批改</h2><p class="mute">手寫、打字題由老師判斷對錯。答對加 100 分。</p>
+    <div id="grade-list"></div>
+    <button id="grade-close" class="btn btn-gold" type="button">批改完成，回到遊戲</button>
+  </div></div>
   <div id="fx"></div>
 </main>
 <script src="share.js"></script>

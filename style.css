@@ -308,3 +308,23 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
   .hud-left{order:1;width:100%}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
+/* 老師批改（單人模式） */
+.grade-btn{position:relative;overflow:hidden}
+.grade-btn.pressing::after{content:"";position:absolute;left:0;bottom:0;height:4px;background:#ffe066;animation:gpress 1.5s linear forwards}
+@keyframes gpress{from{width:0}to{width:100%}}
+#btn-grade{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+.end-grade{margin:12px auto;max-width:560px;padding:12px 14px;border:1.5px solid rgba(232,193,90,.6);border-radius:14px;background:rgba(28,18,56,.75);line-height:1.6}
+.end-grade .btn{display:block;margin:10px auto 0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+.grade-ov{position:fixed;inset:0;z-index:80;background:rgba(10,6,24,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
+.grade-ov.hidden{display:none}
+.grade-card{width:min(760px,100%);background:#22163f;border:2px solid #e8c15a;border-radius:18px;padding:18px;color:#f6efff}
+.grade-card h2{margin:0 0 4px}
+.gitem{border:1.5px solid rgba(232,193,90,.35);border-radius:14px;padding:12px;margin:12px 0;background:rgba(255,255,255,.04)}
+.gitem.ok{border-color:#6fd38a}.gitem.ng{border-color:#ff8a80}
+.gitem .gq{font-weight:700;margin-bottom:6px}
+.gitem .gref{margin-bottom:6px}
+.gitem .gans{background:#fffaf0;color:#2a1d3d;border-radius:10px;padding:10px 12px;font-size:20px;white-space:pre-wrap}
+.gitem canvas.ink-view{display:block;max-width:100%;margin:6px 0;border-radius:8px}
+.gitem .gbtns{display:flex;gap:10px;margin-top:10px;align-items:center}
+.gitem .gres{font-weight:700}
+#grade-close{display:block;margin:14px auto 0}
