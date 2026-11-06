@@ -60,7 +60,7 @@
       untilCards: SET.cardEvery - ((G.qi + 1) % SET.cardEvery), cardEvery: SET.cardEvery, maxP: MAX,
       players: ps.map(function (p) {
         return { pid: p.pid, name: p.name, sid: p.sid || '', sidR: p.sid ? 0 : Math.max(0, p.sidUntil - Date.now()), g: p.gender, seed: p.seed, score: p.score, rank: rk.indexOf(p) + 1, cards: p.cards, next: Object.keys(p.next || {}),
-          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined } : null,
+          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined, cr: p.cur.cr, ct: p.cur.ct, cm: G.phase === 'reveal' ? p.cur.cm : undefined } : null,
           delta: p.delta || 0, rd: p.rankDelta || 0, correct: p.correct, wrong: p.wrong, streak: p.streak, on: online(p) };
       }),
       merchant: G.merchant ? { stock: G.merchant.stock, done: Object.keys(G.merchant.done) } : null,
@@ -97,6 +97,7 @@
     if (G.paused && d.t !== 'leave') return fx(p.pid, 'info', '老師暫停中，請稍等一下。');
     if (d.t === 'ans') answer(p, +d.k, +d.qi);
     else if (d.t === 'sub') submitFree(p, d.v, +d.qi);
+    else if (d.t === 'draft') draftFree(p, d.v, +d.qi);
     else if (d.t === 'buy') buy(p, d.card);
     else if (d.t === 'tradeDone') { if (G.merchant) { G.merchant.done[p.pid] = 1; G.merchant.feed.push(p.name + ' 完成交易'); renderMerchantFeed(); push(); checkMerchantDone(); } }
     else if (d.t === 'use') useCard(p, d.card, d.target);
@@ -139,6 +140,7 @@
     if (SET.totalTimer && G.phase !== 'lobby') mid.appendChild(el('span', 'pill', '⏱ 總時間 ' + fmt(G.elapsed)));
     if (G.timer && G.timer.kind !== 'effect') { var lowT = G.timer.remain < 5500; mid.appendChild(el('span', 'pill' + (lowT ? ' low' : ''), '⏳ ' + Math.ceil(G.timer.remain / 1000) + ' 秒')); }
     mid.appendChild(el('span', 'pill', '🧙 ' + list().filter(online).length + ' / ' + list().length + ' 位勇者'));
+    monTime();
     var ring = $('ring'); if (ring && G.timer && G.timer.kind === 'q') {
       var f = Math.max(0, G.timer.remain / G.timer.total); ring.querySelector('circle.f').setAttribute('stroke-dashoffset', String(339.3 * (1 - f)));
       ring.querySelector('.t').textContent = Math.ceil(G.timer.remain / 1000); ring.classList.toggle('low', G.timer.remain < 5500);
@@ -151,7 +153,7 @@
 
   /* ---------- 畫面 ---------- */
   function stage() { var s = $('stage'); s.innerHTML = ''; return s; }
-  function render() { liveUpdate(); ({ lobby: renderLobby, story: renderStory, room: renderRoom, question: renderQuestion, grade: renderGrade, reveal: renderReveal, chest: renderChest,
+  function render() { if (G.phase !== 'question') closeMonitor(); liveUpdate(); ({ lobby: renderLobby, story: renderStory, room: renderRoom, question: renderQuestion, grade: renderGrade, reveal: renderReveal, chest: renderChest,
     merchant: renderMerchant, fairy: renderFairy, cards: renderCards, gate: renderGate, end: renderEnd })[G.phase](); }
 
   function renderLobby() {
@@ -223,7 +225,7 @@
     return cur;
   }
   function startQuestion() {
-    G.qi++; var it = G.seq[G.qi]; G.phase = 'question'; G.q = { ms: 0, order: [] };
+    G.qi++; var it = G.seq[G.qi]; G.phase = 'question'; G.q = { ms: 0, order: [] }; G.mask = true; G.ov = {};
     var rk = ranked(); list().forEach(function (p) { p.rankBefore = rk.indexOf(p) + 1; p.cur = freshCur(p); });
     var fs = WQSettings.forcedSeconds(it.o.q);
     if (fs) startTimer('q', fs * 1000); else if (SET.qTimer) startTimer('q', SET.qSeconds * 1000); else G.timer = null;
@@ -281,6 +283,7 @@
     var st = el('div', 'strip'); st.id = 'strip';
     list().forEach(function (p) { var m = el('div', 'mini'); m.dataset.pid = p.pid; m.appendChild(px(p)); m.appendChild(el('span', '', p.name)); st.appendChild(m); });
     side.appendChild(st);
+    if (!WQSettings.isChoice(Q)) side.appendChild(btn('btn btn-gold', '📺 全班作答監控', openMonitor, 'h-monitor'));
     side.appendChild(btn('btn btn-violet', WQSettings.isChoice(Q) ? '結束本題、公布答案' : '結束作答、開始批改', function () { endQuestion(); }, 'h-reveal'));
     L.appendChild(side); s.appendChild(L); updateStrip(st); liveUpdate();
   }
@@ -290,21 +293,77 @@
     var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
     if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || !Q || WQSettings.isChoice(Q)) return;
     if (typeof v === 'string') v = v.slice(0, 600); else if (!v || !v.c) return;
-    p.cur.sub = { v: v, at: Math.round(G.q.ms) }; p.cur.ms = p.cur.sub.at; p.cur.done = true;
+    p.cur.sub = { v: v, at: Math.round(G.q.ms) }; p.cur.ms = p.cur.sub.at; p.cur.done = true; p.cur.draft = null;
     fx(p.pid, 'good', '已送出！時間結束前還可以修改再送出。');
-    updateStrip($('strip')); push(); checkAllDone();
+    updateStrip($('strip')); monTile(p); push(); checkAllDone();
+  }
+  /* 學生作答中的草稿（給老師的全班監控版看，不算送出） */
+  function draftFree(p, v, qi) {
+    var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || p.cur.skip || !Q || WQSettings.isChoice(Q)) return;
+    if (typeof v === 'string') v = v.slice(0, 600); else if (!v || !v.c) return;
+    p.cur.draft = { v: v, at: Math.round(G.q.ms) }; monTile(p);
   }
   function endQuestion() {
     if (G.phase !== 'question') return;
     var Q = G.seq[G.qi].o.q;
     if (WQSettings.isChoice(Q)) return reveal();
-    clearTimeout(doneT); G.timer = null; G.phase = 'grade'; G.mask = true; G.opened = {};
+    clearTimeout(doneT); G.timer = null; G.phase = 'grade';
     list().forEach(function (p) {
       var c = p.cur || (p.cur = freshCur(p)); if (c.skip) return;
+      if (!c.sub && c.draft) { c.sub = c.draft; c.ms = c.sub.at; }
       if (!c.sub) c.mark = false;
       else if (WQSettings.inputOf(Q) === 'fill' && WQSettings.fillMatch(Q, c.sub.v)) c.mark = true;
     });
     render(); push(); WQSfx.play('open');
+  }
+  /* ---------- 學生作答格（監控版與批改共用，照同步出題工具：預設遮住，可全開／全關，點一下開關單人） ---------- */
+  function isMasked(p) { return G.ov && (p.pid in G.ov) ? !G.ov[p.pid] : G.mask !== false; }
+  function nCells(c) { return c && c.sub && c.sub.v && c.sub.v.n ? c.sub.v.n : 1; }
+  function setCells(c, Q, v) {
+    var n = nCells(c), cm = c.cm || [];
+    if (v === true || v === false) { cm = []; for (var i = 0; i < n; i++) cm.push(v); }
+    c.cm = cm; c.mark = WQSettings.perCell(Q) && typeof c.sub.v !== 'string' ? WQSettings.markFromCells(cm, n) : (v === true || v === false ? v : undefined);
+  }
+  function gradeTile(p, Q, mode, redraw) {
+    var c = p.cur || {}, live = mode === 'live', v = c.sub ? c.sub.v : (live && c.draft ? c.draft.v : null);
+    var cls = 'gtile' + (!live && c.mark === true ? ' ok' : (!live && c.mark === false ? ' ng' : (!live && typeof c.mark === 'number' ? ' part' : '')));
+    var t = el('div', cls); t.dataset.pid = p.pid;
+    var h = el('div', 'gh'); h.appendChild(px(p)); h.appendChild(el('span', '', who(p)));
+    h.appendChild(el('small', 'mute', live ? (c.skip ? '傳送門' : c.sub ? '✔ 已送出' : (c.draft ? '作答中…' : '未作答')) : (c.sub ? (c.sub.at / 1000).toFixed(1) + ' 秒' : '')));
+    t.appendChild(h);
+    var body = el('div', 'gbody' + (isMasked(p) ? ' masked' : ''));
+    if (c.skip) body.appendChild(el('div', 'gtext', '🌀 傳送門卡自動過關'));
+    else if (!v) body.appendChild(el('div', 'gtext mute', live ? '（空白）' : '沒有作答'));
+    else if (typeof v === 'string') body.appendChild(el('div', 'gtext', v));
+    else { var cv = el('canvas', 'gink'); body.appendChild(cv); paintInk(cv, v, Q); }
+    body.appendChild(el('div', 'gmask', '已遮蔽・點一下顯示'));
+    body.addEventListener('click', function () { G.ov = G.ov || {}; G.ov[p.pid] = isMasked(p); body.classList.toggle('masked', isMasked(p)); });
+    t.appendChild(body);
+    if (!live && c.sub && !c.skip) {
+      var ab = el('div', 'gbtns');
+      if (WQSettings.perCell(Q) && typeof c.sub.v !== 'string') {
+        var n = nCells(c), cm = c.cm || [], row = el('div', 'cell-marks');
+        for (var i = 0; i < n; i++) (function (i) {
+          var d = el('div', 'cm'); d.appendChild(el('span', 'cm-n', String(i + 1)));
+          d.appendChild(btn('gok' + (cm[i] === true ? ' on' : ''), '✓', function () { var a = (c.cm || []).slice(); a[i] = true; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); redraw(); }));
+          d.appendChild(btn('gng' + (cm[i] === false ? ' on' : ''), '✗', function () { var a = (c.cm || []).slice(); a[i] = false; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); redraw(); }));
+          row.appendChild(d);
+        })(i);
+        ab.appendChild(row);
+        var right = cm.filter(function (x) { return x === true; }).length;
+        ab.appendChild(el('span', 'cm-sum', c.mark === undefined ? '每個字都批改後計分' : '對 ' + right + ' / ' + n + ' 字・' + WQSettings.freePts(Q, c.mark, n) + ' 分'));
+      } else {
+        ab.appendChild(btn('gok' + (c.mark === true ? ' on' : ''), '✔ 對', function () { setCells(c, Q, true); redraw(); }));
+        ab.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 錯', function () { setCells(c, Q, false); redraw(); }));
+      }
+      t.appendChild(ab);
+    }
+    return t;
+  }
+  function maskBar(bar, redraw) {
+    bar.appendChild(btn('hbtn' + (G.mask === false && !Object.keys(G.ov || {}).length ? ' on' : ''), '全開', function () { G.mask = false; G.ov = {}; redraw(); }));
+    bar.appendChild(btn('hbtn' + (G.mask !== false && !Object.keys(G.ov || {}).length ? ' on' : ''), '全關', function () { G.mask = true; G.ov = {}; redraw(); }));
   }
   function renderGrade() {
     var it = G.seq[G.qi], Q = it.o.q, s = stage(), w = el('div', 'panel grade');
@@ -312,41 +371,49 @@
     var info = el('div', 'grade-info'); info.appendChild(el('div', 'qprompt small', Q.prompt));
     var mdl = el('div', 'model'); mdl.appendChild(el('b', '', '參考答案：')); var ms = el('span', 'kai', WQSettings.answerShow(Q) || '（老師判斷）'); mdl.appendChild(ms);
     var eye = btn('hbtn', '顯示', function () { mdl.classList.toggle('blur'); eye.textContent = mdl.classList.contains('blur') ? '顯示' : '隱藏'; }); mdl.classList.add('blur'); mdl.appendChild(eye);
-    info.appendChild(mdl); top.appendChild(info); w.appendChild(top);
+    info.appendChild(mdl);
+    info.appendChild(el('div', 'mute', WQSettings.perCell(Q) ? '一個字一格，每個字分開批改：一字 ' + WQSettings.CHAR_PTS + ' 分。' : '整題批改：答對 100 分。'));
+    top.appendChild(info); w.appendChild(top);
     var bar = el('div', 'grade-bar');
-    bar.appendChild(btn('hbtn' + (G.mask ? '' : ' on'), '全開', function () { G.mask = false; G.opened = {}; renderGrade(); }));
-    bar.appendChild(btn('hbtn' + (G.mask ? ' on' : ''), '全遮', function () { G.mask = true; G.opened = {}; renderGrade(); }));
-    bar.appendChild(btn('hbtn', '未批改的全部標對', function () { list().forEach(function (p) { if (p.cur && p.cur.sub && p.cur.mark === undefined) p.cur.mark = true; }); renderGrade(); }));
-    var left = list().filter(function (p) { return p.cur && p.cur.sub && p.cur.mark === undefined; }).length;
-    bar.appendChild(el('span', 'pill', left ? '還有 ' + left + ' 位沒批改' : '全部批改完成'));
+    maskBar(bar, renderGrade);
+    bar.appendChild(btn('hbtn', '未批改的全部標對', function () {
+      list().forEach(function (p) { var c = p.cur; if (!c || !c.sub || c.skip || c.mark !== undefined) return;
+        if (WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { var a = (c.cm || []).slice(); for (var i = 0; i < nCells(c); i++) if (a[i] !== false) a[i] = true; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); } else setCells(c, Q, true); });
+      renderGrade();
+    }));
+    var left = list().filter(function (p) { return p.cur && p.cur.sub && !p.cur.skip && p.cur.mark === undefined; }).length;
+    bar.appendChild(el('span', 'pill', left ? '還有 ' + left + ' 位沒批改完' : '全部批改完成'));
     bar.appendChild(btn('btn btn-gold', '公布答案', function () {
-      var n = list().filter(function (p) { return p.cur && p.cur.sub && p.cur.mark === undefined; }).length;
-      if (n && !confirm('還有 ' + n + ' 位勇者沒有批改，這些會算答錯。確定公布答案嗎？')) return;
+      var n = list().filter(function (p) { return p.cur && p.cur.sub && !p.cur.skip && p.cur.mark === undefined; }).length;
+      if (n && !confirm('還有 ' + n + ' 位勇者沒有批改完，沒批改的字會算錯。確定公布答案嗎？')) return;
       reveal();
     }, 'h-publish'));
     w.appendChild(bar);
     var grid = el('div', 'grade-grid');
-    var guides = null;
-    list().forEach(function (p) {
-      var c = p.cur || {}, t = el('div', 'gtile' + (c.mark === true ? ' ok' : (c.mark === false ? ' ng' : '')));
-      var h = el('div', 'gh'); h.appendChild(px(p)); h.appendChild(el('span', '', who(p))); if (c.sub) h.appendChild(el('small', 'mute', (c.sub.at / 1000).toFixed(1) + ' 秒')); t.appendChild(h);
-      var body = el('div', 'gbody' + (G.mask && !G.opened[p.pid] ? ' masked' : ''));
-      if (c.skip) body.appendChild(el('div', 'gtext', '🌀 傳送門卡自動過關'));
-      else if (!c.sub) body.appendChild(el('div', 'gtext mute', '沒有作答'));
-      else if (typeof c.sub.v === 'string') body.appendChild(el('div', 'gtext', c.sub.v));
-      else { var cv = el('canvas', 'gink'); body.appendChild(cv); paintInk(cv, c.sub.v, Q); }
-      body.addEventListener('click', function () { G.opened[p.pid] = 1; body.classList.remove('masked'); });
-      t.appendChild(body);
-      if (c.sub && !c.skip) {
-        var ab = el('div', 'gbtns');
-        ab.appendChild(btn('gok' + (c.mark === true ? ' on' : ''), '✔ 對', function () { c.mark = true; renderGrade(); }));
-        ab.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 錯', function () { c.mark = false; renderGrade(); }));
-        t.appendChild(ab);
-      }
-      grid.appendChild(t);
-    });
+    list().forEach(function (p) { grid.appendChild(gradeTile(p, Q, 'grade', renderGrade)); });
     w.appendChild(grid); s.appendChild(w);
   }
+  /* ---------- 全班作答監控（全畫面，手寫、打字題作答時） ---------- */
+  function openMonitor() {
+    closeMonitor(); var it = G.seq[G.qi], Q = it.o.q;
+    var ov = el('div', 'monitor'); ov.id = 'monitor';
+    var hd = el('div', 'mon-head'); hd.appendChild(el('b', '', '📺 全班作答監控'));
+    hd.appendChild(el('span', 'mon-q', WQSettings.inputLabel(Q) + '：' + Q.prompt));
+    var tm = el('span', 'pill', ''); tm.id = 'mon-time'; hd.appendChild(tm);
+    var bar = el('span', 'mon-btns'); maskBar(bar, openMonitor); hd.appendChild(bar);
+    hd.appendChild(btn('btn btn-gold', '關閉監控', closeMonitor, 'mon-close'));
+    ov.appendChild(hd);
+    var grid = el('div', 'grade-grid mon-grid'); grid.id = 'mon-grid';
+    list().forEach(function (p) { grid.appendChild(gradeTile(p, Q, 'live')); });
+    ov.appendChild(grid); document.body.appendChild(ov); monTime();
+  }
+  function closeMonitor() { var m = $('monitor'); if (m) m.remove(); }
+  function monTile(p) {
+    var g = $('mon-grid'); if (!g || G.phase !== 'question') return;
+    var old = g.querySelector('.gtile[data-pid="' + p.pid + '"]'), t = gradeTile(p, G.seq[G.qi].o.q, 'live');
+    if (old) old.replaceWith(t); else g.appendChild(t);
+  }
+  function monTime() { var t = $('mon-time'); if (t) t.textContent = G.timer && G.timer.kind === 'q' ? '⏳ ' + Math.ceil(G.timer.remain / 1000) + ' 秒' : ''; }
   function paintInk(cv, v, Q) {
     WQSettings.loadInk().then(function (ink) {
       requestAnimationFrame(function () { ink.paintInkThumb(cv, v, { grid: Q.kind !== 'write' }); });
@@ -358,13 +425,20 @@
     clearTimeout(doneT); G.timer = null; var it = G.seq[G.qi], Q = it.o.q;
     var res = {};
     if (!WQSettings.isChoice(Q)) {
-      var okList = list().filter(function (p) { return p.cur && !p.cur.skip && p.cur.sub && p.cur.mark === true; }).sort(function (a, b) { return a.cur.sub.at - b.cur.sub.at; });
-      list().forEach(function (p) { var c = p.cur; if (c && !c.skip && c.mark !== true) c.mark = false; });
-      okList.forEach(function (p, i) {
-        var c = p.cur; c.correct = true; c.pts = c.frozen ? 0 : 100 + (c.lucky ? 50 : 0);
-        if (!c.frozen) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
-        p.score += c.pts + c.bonus;
+      list().forEach(function (p) {
+        var c = p.cur; if (!c || c.skip) return;
+        if (c.sub && WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { var a = (c.cm || []).slice(); for (var i = 0; i < nCells(c); i++) if (a[i] !== true) a[i] = false; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); }
+        else if (c.mark !== true) c.mark = false;
       });
+      var okList = list().filter(function (p) { return p.cur && !p.cur.skip && p.cur.sub && p.cur.mark !== false; }).sort(function (a, b) { return a.cur.sub.at - b.cur.sub.at; });
+      okList.forEach(function (p) {
+        var c = p.cur, n = nCells(c), all = c.mark === true;
+        c.correct = all; c.ct = WQSettings.perCell(Q) && typeof c.sub.v !== 'string' ? n : 0; c.cr = c.ct ? (c.cm || []).filter(function (x) { return x === true; }).length : 0;
+        c.pts = c.frozen ? 0 : WQSettings.freePts(Q, c.mark, n) + (c.lucky && all ? 50 : 0);
+        if (!c.frozen && all) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
+        p.score += c.pts + (c.bonus || 0);
+      });
+      list().forEach(function (p) { var c = p.cur; if (c && c.sub && c.mark === false && WQSettings.perCell(Q) && typeof c.sub.v !== 'string') { c.ct = nCells(c); c.cr = 0; } });
     }
     list().forEach(function (p) {
       var c = p.cur || freshCur(p); c.done = true;

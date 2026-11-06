@@ -362,7 +362,7 @@
     play('open'); updGrade();
     var ref = WQSettings.answerShow(q);
     feedback('hint', (auto ? '時間到，已自動交出你寫的答案。' : '') + '📝 答案已交給老師批改',
-      '老師批改答對後，會再加 100 分。' + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
+      (WQSettings.perCell(q) ? '老師會一個字一個字批改，每寫對一個字加 ' + WQSettings.CHAR_PTS + ' 分。' : '老師批改答對後，會再加 100 分。') + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
     finishQ(o);
   }
 
@@ -376,7 +376,7 @@
   function longPress(btn, fn) {
     var t = null;
     function stop() { clearTimeout(t); t = null; btn.classList.remove('pressing'); }
-    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); btn.classList.add('pressing'); t = setTimeout(function () { stop(); fn(); }, 1500); });
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); try { btn.setPointerCapture(e.pointerId); } catch (x) {} btn.classList.add('pressing'); t = setTimeout(function () { stop(); fn(); }, 1500); });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
     btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     btn.addEventListener('click', function () { if (!btn.classList.contains('pressing')) say('這是老師批改的按鈕，請老師長按 2 秒打開。', 3500); });
@@ -393,13 +393,31 @@
         d.appendChild(cv); requestAnimationFrame(function () { it.ink.paintInkThumb(cv, it.v, op); });
         it.ink.ensureKai(g).then(function () { it.ink.paintInkThumb(cv, it.v, op); });
       }
-      var bs = el('div', 'gbtns');
-      if (it.mark === null) {
+      var bs = el('div', 'gbtns'), per = WQSettings.perCell(q) && typeof it.v !== 'string', n = per ? Math.max(1, it.v.n || 1) : 1;
+      function done(mark) {
+        it.mark = mark; var pts = WQSettings.freePts(q, mark, n); it.pts = pts;
+        if (mark === true) S.firstTry++; else { S.revealed++; S.review.push(it.o.word); }
+        if (pts) addScore(pts); play(pts ? 'correct' : 'wrong'); afterGrade();
+      }
+      if (it.mark === null && per) {
+        it.cm = it.cm || [];
+        var row = el('div', 'cell-marks');
+        for (var ci = 0; ci < n; ci++) (function (ci) {
+          var c = el('div', 'cm'); c.appendChild(el('span', 'cm-n', '第 ' + (ci + 1) + ' 字'));
+          [[true, '✓'], [false, '✗']].forEach(function (pr) {
+            var b = el('button', it.cm[ci] === pr[0] ? 'on' : '', pr[1]); b.type = 'button';
+            b.onclick = function () { it.cm[ci] = pr[0]; var arr = []; for (var x = 0; x < n; x++) arr.push(it.cm[x]); var m = WQSettings.markFromCells(arr); if (m === undefined) openGrade(); else done(m); };
+            c.appendChild(b);
+          });
+          row.appendChild(c);
+        })(ci);
+        bs.appendChild(row); bs.appendChild(el('span', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分，每個字都批改後計分'));
+      } else if (it.mark === null) {
         var ok = el('button', 'btn btn-gold', '✔ 對'), ng = el('button', 'btn btn-violet', '✘ 錯'); ok.type = ng.type = 'button';
-        ok.onclick = function () { it.mark = true; S.firstTry++; addScore(100); play('correct'); afterGrade(); };
-        ng.onclick = function () { it.mark = false; S.revealed++; S.review.push(it.o.word); play('wrong'); afterGrade(); };
+        ok.onclick = function () { done(true); };
+        ng.onclick = function () { done(false); };
         bs.appendChild(ok); bs.appendChild(ng);
-      } else bs.appendChild(el('span', 'gres', it.mark ? '✔ 答對（+100）' : '✘ 答錯'));
+      } else bs.appendChild(el('span', 'gres', (it.mark === true ? '✔ 答對' : it.mark === false ? '✘ 答錯' : '◐ 部分答對') + (per ? '（對 ' + (it.cm || []).filter(function (x) { return x === true; }).length + ' / ' + n + ' 字）' : '') + (it.pts ? '　+' + it.pts : '')));
       d.appendChild(bs); list.appendChild(d);
     });
     if (!S.pending.length) list.appendChild(el('p', 'mute', '目前沒有要批改的答案。'));
@@ -474,6 +492,7 @@
   function closeModal() {
     if (qt || (cur && cur.pending)) return;
     play('tap'); var c = cur; overlay('modal', false); cur = null; codeKeys = null; stopQTimer();
+    try { window.scrollTo(0, 0); for (var n = $('hud'); n; n = n.parentElement) n.scrollTop = 0; } catch (e) {}
     if (c && c.done) { renderObjects(false); if (c.kind === 'puzzle') showRune(); }
   }
   $('m-continue').addEventListener('click', closeModal);

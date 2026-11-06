@@ -177,6 +177,7 @@
       b.appendChild(el('span', 'k', String(k + 1))); b.appendChild(el('span', '', t)); w.appendChild(b); V.opts.push(b);
     });
     c.appendChild(w); V.fb = el('div', 'fb hidden'); c.appendChild(V.fb);
+    selfMask(c, w);
   }
   function updQuestion() {
     var cu = mine.cur || { t: [], rm: [] }, q = S.q;
@@ -220,7 +221,7 @@
       WQSettings.loadInk().then(function (ink) {
         if (S.qi !== qi || S.ph !== 'question') return;
         V.ink = ink;
-        function build(k) { V.n = k; V.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function () {} }); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
+        function build(k) { V.n = k; V.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function (i, kind) { if (kind !== 'live') draft(); } }); draft(); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
         if (q.kind === 'word' && !q.cells) {
           chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '幾個字？'));
           [2, 3, 4].forEach(function (k) { var b = btn('', k + ' 格', function () { build(k); }); b.dataset.n = k; chooser.appendChild(b); });
@@ -230,9 +231,29 @@
     } else {
       V.text = el(q.input === 'fill' ? 'input' : 'textarea'); if (q.input === 'fill') V.text.type = 'text';
       V.text.placeholder = '在這裡打字作答'; V.text.id = 'free-text'; box.appendChild(V.text);
+      V.text.addEventListener('input', draft);
     }
     box.appendChild(go);
     V.freeSt = el('div', 'fb hidden'); box.appendChild(V.freeSt);
+    selfMask(c, box);
+    /* 寫字、打字時把草稿傳給老師的全班監控版（約每 1.2 秒一次） */
+    function draft() {
+      if (V.dT) return;
+      V.dT = setTimeout(function () {
+        V.dT = null; if (!S || S.ph !== 'question' || S.qi !== qi) return;
+        var v = null;
+        if (q.input === 'draw') { if (V.cells && V.ink) { v = { n: V.n, c: V.cells.map(function (x) { return { s: x.s }; }) }; if (!V.ink.hasInk(v)) v = null; } }
+        else if (V.text) v = V.text.value.trim() || null;
+        if (v) send('draft', { qi: qi, v: v });
+      }, 1200);
+    }
+  }
+  /* 學生自己遮住作答區（防偷看），點一下再打開繼續修改；每一題開始時解除 */
+  function selfMask(c, area) {
+    var wrap = el('div', 'self-wrap'); area.parentNode.insertBefore(wrap, area); wrap.appendChild(area);
+    var cover = btn('self-cover', '', function () { toggle(); }); cover.appendChild(el('b', '', '🙈 答案已遮住')); cover.appendChild(el('span', '', '點這裡打開，繼續作答')); wrap.appendChild(cover);
+    var b = btn('btn btn-violet self-btn', '🙈 遮住我的答案', function () { toggle(); }); b.id = 'self-mask'; c.appendChild(b);
+    function toggle() { var on = !wrap.classList.contains('masked'); wrap.classList.toggle('masked', on); b.textContent = on ? '👀 打開我的答案' : '🙈 遮住我的答案'; }
   }
   function updFree() {
     var cu = mine.cur || {}; if (!V.freeSt) return;
@@ -256,8 +277,9 @@
   function buildReveal(c) {
     var cu = mine.cur || {}, q = S.q;
     if (!WQSettings.isChoice(q)) {
-      c.appendChild(el('div', 'big-res', cu.c ? '✔ 老師批改：答對！' : '✘ 這題沒答對'));
-      if (cu.c) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
+      c.appendChild(el('div', 'big-res', cu.c ? '✔ 老師批改：答對！' : (cu.cr ? '◐ 老師批改：答對 ' + cu.cr + ' / ' + cu.ct + ' 個字' : '✘ 這題沒答對')));
+      if (cu.ct) c.appendChild(el('p', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分' + (cu.cm ? '：' + cu.cm.map(function (x, i) { return '第 ' + (i + 1) + ' 字' + (x ? '✓' : '✗'); }).join('　') : '')));
+      if (cu.pts || cu.b) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
       var md = el('div', 'model'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', String(q.answerText || '（老師判斷）').split(/[|｜]/).join(' 或 '))); c.appendChild(md);
       showMine(c, q, true);
       if (q.explain) c.appendChild(el('p', 'mute', q.explain));

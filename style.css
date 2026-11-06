@@ -328,3 +328,8 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
 .gitem .gbtns{display:flex;gap:10px;margin-top:10px;align-items:center}
 .gitem .gres{font-weight:700}
 #grade-close{display:block;margin:14px auto 0}
+.gitem .cell-marks{display:flex;flex-wrap:wrap;gap:8px}
+.gitem .cell-marks .cm{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.08);border-radius:10px;padding:4px 8px}
+.gitem .cell-marks button{min-width:40px;padding:6px 10px;border-radius:8px;border:1.5px solid rgba(232,193,90,.5);background:transparent;color:#f6efff;font-size:17px;cursor:pointer}
+.gitem .cell-marks button.on{background:#e8c15a;color:#2a1d3d}
+.gitem .gbtns{flex-wrap:wrap}

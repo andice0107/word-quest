@@ -85,6 +85,19 @@ window.WQSettings = (function () {
   /* 手寫、打字題強制作答時限（秒）：寫國字、寫注音 60；造詞、改錯字、手寫作答 100；造句等打字題 180。填充題照一般設定 */
   var FORCED = { hanzi: 60, zhuyin: 60, word: 100, correction: 100, write: 100 };
   function forcedSeconds(q) { var i = inputOf(q); if (i === 'draw') return FORCED[q.kind] || 100; if (i === 'text') return 180; return 0; }
+  /* 田字格題以字計分：一字一格、一字 60 分；手寫作答（整塊手寫板）、打字題整題 100 分 */
+  var CHAR_PTS = 60, WHOLE_PTS = 100;
+  function perCell(q) { return inputOf(q) === 'draw' && q.kind !== 'write'; }
+  function freePts(q, mark, n) {
+    if (perCell(q)) { n = Math.max(1, n || 1); return mark === true ? CHAR_PTS * n : (typeof mark === 'number' ? CHAR_PTS * Math.round(mark * n) : 0); }
+    return mark === true ? WHOLE_PTS : 0;
+  }
+  /* 每個字的對錯 → 整題標記：全對 true、全錯 false、部分對為比例；還有沒批改的字回傳 undefined */
+  function markFromCells(cm, n) {
+    n = n || (cm ? cm.length : 0); if (!cm || !n) return undefined;
+    var r = 0; for (var i = 0; i < n; i++) { if (cm[i] !== true && cm[i] !== false) return undefined; if (cm[i]) r++; }
+    return r === n ? true : (r === 0 ? false : r / n);
+  }
   function needsTeacher(q) { var i = inputOf(q); return i === 'draw' || i === 'text'; }
   /* 系統給的勇者名字（短，不重複） */
   var HERO_A = ['星光', '閃電', '烈火', '冰霜', '疾風', '月影', '雷鳴', '翡翠', '黃金', '銀月', '彩虹', '晨曦', '暴風', '流星', '紫焰', '蒼藍', '旋風', '熾日', '雪花', '琥珀'];
@@ -147,5 +160,5 @@ window.WQSettings = (function () {
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
-    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, needsTeacher: needsTeacher, heroName: heroName };
+    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, needsTeacher: needsTeacher, heroName: heroName };
 })();
