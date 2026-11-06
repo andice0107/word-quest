@@ -262,6 +262,15 @@ button:focus{outline:none} button:focus-visible{outline:3px solid var(--gold);ou
 .stat b{font-size:20px;color:#ffe9a8}
 #end-review{max-width:560px;line-height:1.7;background:rgba(20,14,40,.6);border-radius:12px;padding:10px 16px}
 
+/* 冒險篇章追加 */
+.teacher-link{font-size:16px;font-family:var(--serif);font-weight:700;color:#ffe9a8;padding:8px 16px;border-color:rgba(232,193,90,.6);text-decoration:none}
+#hud-time{font-size:13px;margin-top:3px;color:#f6f1ff;opacity:.9}
+.qtimer{position:relative;height:26px;border-radius:999px;background:rgba(20,14,40,.7);border:1.5px solid rgba(232,193,90,.5);overflow:hidden;margin:4px 0 8px}
+.qtimer i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#e8c15a,#f28c28);transition:width .2s linear}
+.qtimer span{position:relative;display:block;text-align:center;font-weight:700;font-size:14px;line-height:23px;color:#fff;text-shadow:0 1px 3px #000}
+.qtimer.low i{background:linear-gradient(90deg,#ff8a80,#d9534f)} .qtimer.low{animation:shake .5s infinite}
+.end-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+
 @media (max-width:640px){
   #objects{grid-template-columns:repeat(3,minmax(0,1fr))}
   #scene{inset:128px 6px 100px;overflow:auto}

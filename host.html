@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>多人闖關・教師大螢幕</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="mp.css">
+</head>
+<body>
+<main id="app">
+  <section class="screen active">
+    <div class="bg" id="h-bg"></div><div class="veil strong" id="h-veil"></div><div class="motes"></div>
+    <header id="h-top">
+      <div class="left" id="h-left">多人闖關</div>
+      <div class="mid" id="h-mid"></div>
+      <div class="right">
+        <span class="pill" id="h-net">連線中…</span>
+        <button class="hbtn" id="h-pause" type="button">⏸ 暫停</button>
+        <button class="hbtn" id="h-logbtn" type="button">📜 勇者闖關記錄</button>
+      </div>
+    </header>
+    <div id="stage"></div>
+    <div id="pause-veil" class="hidden"><div>⏸ 老師暫停中，時間停止</div></div>
+    <div id="h-log" class="overlay hidden"><div class="card">
+      <div class="notes-head"><h2>勇者闖關記錄</h2>
+        <button id="log-close" class="btn btn-round small" type="button" aria-label="關閉"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="tabs"><button class="hbtn on" id="tab-sum" type="button">勇者總覽</button><button class="hbtn" id="tab-q" type="button">逐題回溯</button></div>
+      <div id="log-body"></div>
+    </div></div>
+  </section>
+  <div id="fx"></div>
+</main>
+<script src="vendor/mqtt.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="content.js"></script>
+<script src="settings.js"></script>
+<script src="pixel.js"></script>
+<script src="cards.js"></script>
+<script src="sfx.js"></script>
+<script src="net.js"></script>
+<script src="host.js"></script>
+</body>
+</html>

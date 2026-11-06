@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>勇者裝置・多人闖關</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="mp.css">
+</head>
+<body>
+<main id="app">
+  <div class="bg" id="p-bg"></div><div class="veil strong"></div><div class="motes"></div>
+  <div class="p-app">
+    <div id="p-bar" class="hidden"></div>
+    <div id="p-info" class="hidden"></div>
+    <div id="p-main"></div>
+    <div id="p-hand" class="p-hand hidden"></div>
+  </div>
+  <div id="p-pause" class="p-pause hidden">⏸ 老師暫停中，可以先看題目，等一下再作答</div>
+  <div id="fx"></div>
+</main>
+<script src="vendor/mqtt.min.js"></script>
+<script src="pixel.js"></script>
+<script src="cards.js"></script>
+<script src="sfx.js"></script>
+<script src="net.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

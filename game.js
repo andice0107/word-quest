@@ -12,19 +12,22 @@
     }).catch(function () { alert('這個題目連結無法讀取，請向老師索取新的連結。'); location.replace(location.pathname); });
     return;
   }
-  function loadContent() {
-    try {
-      var saved = localStorage.getItem(LS_KEY);
-      if (saved) { var c = JSON.parse(saved); if (c && c.rooms && c.rooms.length) { c.__custom = true; return c; } }
-    } catch (e) {}
-    return window.DEFAULT_CONTENT;
+  var C = WQSettings.loadContent();
+  var ADV = /[?&]adv=1/.test(location.search);
+  var SET = ADV ? WQSettings.load() : WQSettings.defaults();
+  var ALLQ = WQSettings.total(C);
+  var ROOMS, QCOUNT, TOTAL_STEPS, PICKS = [], ULTIMATE = false;
+  /* 依冒險篇章設定抽題，組成這一趟冒險的房間 */
+  function setupAdventure() {
+    var used = SET.repeat === 'norepeat' ? WQSettings.loadUsed(C) : [];
+    if (used.length >= ALLQ) { used = []; WQSettings.saveUsed(C, used); }
+    PICKS = WQSettings.draw(C, SET.drawCount, used);
+    ROOMS = WQSettings.buildRooms(C, PICKS);
+    QCOUNT = PICKS.length; TOTAL_STEPS = QCOUNT + ROOMS.length + 1; ULTIMATE = false;
   }
-  var C = loadContent();
-  var ROOMS = C.rooms;
+  setupAdventure();
   var TYPE_NAMES = C.typeNames || {};
   var NUM = '一二三四五六七八九十';
-  var QCOUNT = 0; ROOMS.forEach(function (r) { QCOUNT += r.objects.length; });
-  var TOTAL_STEPS = QCOUNT + ROOMS.length + 1;
 
   function img(name) { return 'img/' + name + '.webp'; }
   function $(id) { return document.getElementById(id); }
@@ -76,7 +79,7 @@
   /* ---------- 預先載入圖片 ---------- */
   (function () {
     var names = {}; names.title = 1; names.gate = 1; names.cat = 1; names.seal = 1;
-    ROOMS.forEach(function (r) { names[r.bg] = 1; r.objects.forEach(function (o) { names[o.sprite] = 1; }); });
+    C.rooms.forEach(function (r) { names[r.bg] = 1; r.objects.forEach(function (o) { names[o.sprite] = 1; }); });
     Object.keys(names).forEach(function (n) { var i = new Image(); i.src = img(n); });
   })();
 
@@ -99,8 +102,15 @@
     S = { room: 0, solved: ROOMS.map(function () { return {}; }), seen: ROOMS.map(function () { return {}; }), wrongs: {},
       puzzleDone: ROOMS.map(function () { return false; }), puzzleWrong: ROOMS.map(function () { return 0; }),
       notes: ROOMS.map(function () { return []; }), runes: [], score: 0, shown: 0, steps: 0,
-      firstTry: 0, needHint: 0, revealed: 0, review: [], gateMistakes: 0, start: Date.now(), unread: 0, inGate: false };
+      firstTry: 0, needHint: 0, revealed: 0, review: [], gateMistakes: 0, start: Date.now(), unread: 0, inGate: false, ended: false };
   }
+  /* 總時間計時 */
+  function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2); }
+  setInterval(function () {
+    var t = $('hud-time'); if (!t) return;
+    t.classList.toggle('hidden', !SET.totalTimer);
+    if (S && !S.ended) t.textContent = '⏱ ' + fmt((Date.now() - S.start) / 1000);
+  }, 500);
   function show(id) { ['screen-start', 'screen-story', 'screen-play', 'screen-end'].forEach(function (s) { $(s).classList.toggle('active', s === id); }); }
   function overlay(id, on) { $(id).classList.toggle('hidden', !on); }
 
@@ -114,14 +124,17 @@
   $('instructions').textContent = C.instruction || '';
   $('btn-start').textContent = C.startButton || '開始冒險';
   $('cat-img').src = img('cat'); $('end-cat').src = img('cat');
-  if (C.__custom) $('custom-tag').classList.remove('hidden');
+  if (C.__custom || ADV) {
+    var tg = $('custom-tag'); tg.classList.remove('hidden');
+    tg.textContent = (C.__custom ? '使用老師自訂題目' : '') + (ADV ? (C.__custom ? '・' : '') + '冒險篇章：抽 ' + QCOUNT + ' 題' + (SET.qTimer ? '・每題 ' + SET.qSeconds + ' 秒' : '') : '');
+  }
   $('btn-speak').addEventListener('click', function () {
     if (narration) { try { narration.currentTime = 0; narration.play(); } catch (e) {} return; }
     if ('speechSynthesis' in window) { var u = new SpeechSynthesisUtterance(C.instruction || ''); u.lang = 'zh-TW'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
   });
   $('btn-start').addEventListener('click', function () {
     audioOn(); play('tap'); if (narration) try { narration.pause(); } catch (e) {}
-    reset(); storyStep = 0; renderStory(); show('screen-story');
+    setupAdventure(); reset(); storyStep = 0; renderStory(); show('screen-story');
   });
 
   /* ---------- 故事 ---------- */
@@ -281,6 +294,30 @@
     $('m-keyhint').textContent = '可按數字鍵 1 - ' + q.options.length + ' 作答';
     if (w.length === 1) feedback('hint', '提示', q.hint1); else if (w.length >= 2) feedback('hint', '更明確的提示', q.hint2);
     overlay('modal', true); $('modal-card').scrollTop = 0;
+    startQTimer();
+  }
+  /* 每題作答時限 */
+  var qt = null;
+  function stopQTimer() { clearInterval(qt); qt = null; var b = $('m-timer'); if (b) b.remove(); $('m-close').classList.remove('hidden'); }
+  function startQTimer() {
+    stopQTimer(); if (!SET.qTimer) return;
+    var end = Date.now() + SET.qSeconds * 1000, bar = el('div', 'qtimer'), fill = el('i'), txt = el('span');
+    bar.id = 'm-timer'; bar.appendChild(fill); bar.appendChild(txt); $('m-prompt').parentNode.insertBefore(bar, $('m-prompt'));
+    $('m-close').classList.add('hidden');
+    function tick() {
+      var left = Math.max(0, end - Date.now()), sec = Math.ceil(left / 1000);
+      fill.style.width = (left / (SET.qSeconds * 10)) + '%'; txt.textContent = '⏳ ' + sec + ' 秒';
+      bar.classList.toggle('low', sec <= 5);
+      if (left <= 0) { stopQTimer(); timeUp(); }
+    }
+    tick(); qt = setInterval(tick, 200);
+  }
+  function timeUp() {
+    if (!cur || cur.kind !== 'q' || cur.done) return;
+    var o = ROOMS[S.room].objects[cur.j], q = o.q;
+    cur.done = true; S.revealed++; S.review.push(o.word); play('wrong');
+    $('m-body').querySelectorAll('.opt').forEach(function (b) { b.disabled = true; if (+b.dataset.k === q.answer) b.classList.add('correct'); });
+    feedback('reveal', '時間到！黑貓幫你解開了咒語：正確答案是「' + q.options[q.answer] + '」', q.explain, o.clue); finishQ(o);
   }
   function answer(k, btn) {
     if (!cur || cur.kind !== 'q' || cur.done) return;
@@ -306,12 +343,14 @@
     }
   }
   function finishQ(o) {
+    stopQTimer();
     S.solved[S.room][cur.j] = true; S.notes[S.room].push({ from: o.name, text: o.clue }); S.unread++; step();
     $('m-continue').textContent = '繼續探索'; $('m-continue').classList.remove('hidden'); $('m-keyhint').textContent = '';
     setTimeout(function () { $('m-feedback').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
   }
   function closeModal() {
-    play('tap'); var c = cur; overlay('modal', false); cur = null; codeKeys = null;
+    if (qt) return;
+    play('tap'); var c = cur; overlay('modal', false); cur = null; codeKeys = null; stopQTimer();
     if (c && c.done) { renderObjects(false); if (c.kind === 'puzzle') showRune(); }
   }
   $('m-continue').addEventListener('click', closeModal);
@@ -326,6 +365,10 @@
     if (p.type === 'sequence') buildSeq(p, body); else if (p.type === 'code') buildCode(p, body); else buildChoose(p, body);
     var tools = el('div', 'puz-tools'), tg = el('button', 'btn-ghost', '查看線索本'), list = el('div', 'mini-clues hidden'); tg.type = 'button';
     S.notes[S.room].forEach(function (n) { list.appendChild(el('div', '', n.text)); });
+    var rm = ROOMS[S.room]; if (rm.allClues && rm.allClues.length > rm.objects.length) {
+      var have = {}; rm.objects.forEach(function (o) { have[o.clue] = 1; });
+      rm.allClues.forEach(function (n) { if (!have[n.text]) list.appendChild(el('div', '', '古書殘頁：' + n.text)); });
+    }
     tg.addEventListener('click', function () { play('tap'); list.classList.toggle('hidden'); tg.textContent = list.classList.contains('hidden') ? '查看線索本' : '收起線索'; });
     tools.appendChild(tg); body.appendChild(tools); body.appendChild(list);
     var pw = S.puzzleWrong[S.room]; if (pw === 1) feedback('hint', '提示', p.hint1); else if (pw >= 2) feedback('hint', '更明確的提示', p.hint2);
@@ -478,13 +521,20 @@
 
   /* ---------- 結局 ---------- */
   function endGame() {
-    var sec = Math.round((Date.now() - S.start) / 1000);
-    $('end-title').textContent = C.endTitle || '闖關成功！';
+    var sec = Math.round((Date.now() - S.start) / 1000); S.ended = true;
+    if (SET.repeat === 'norepeat') {
+      var used = WQSettings.loadUsed(C); PICKS.forEach(function (k) { if (used.indexOf(k) < 0) used.push(k); }); WQSettings.saveUsed(C, used);
+      ULTIMATE = used.length >= ALLQ;
+    }
+    $('end-title').textContent = ULTIMATE ? '終極破關！所有咒語都找回來了！' : (C.endTitle || '闖關成功！');
+    var ag = $('btn-another'); ag.classList.toggle('hidden', !(ADV && SET.repeat !== 'none'));
+    ag.textContent = ULTIMATE ? '重新開始全新的冒險' : '接受另一段冒險';
+    if (SET.repeat === 'norepeat' && !ULTIMATE) ag.textContent += '（剩 ' + (ALLQ - WQSettings.loadUsed(C).length) + ' 題沒出現過）';
     $('final-score').textContent = S.score;
     var st = $('end-stats'); st.innerHTML = '';
     function stat(l, v) { var d = el('div', 'stat', l); d.appendChild(el('b', '', v)); st.appendChild(d); }
     stat('一次就答對', S.firstTry + ' / ' + QCOUNT); stat('看了提示才答對', String(S.needHint));
-    stat('黑貓幫忙解開', String(S.revealed)); stat('用時', Math.floor(sec / 60) + ' 分 ' + ('0' + sec % 60).slice(-2) + ' 秒');
+    stat('黑貓幫忙解開', String(S.revealed)); if (SET.totalTimer) stat('用時', Math.floor(sec / 60) + ' 分 ' + ('0' + sec % 60).slice(-2) + ' 秒');
     var best = 0; try { best = +localStorage.getItem('wordQuestBest_' + (C.title || '')) || 0; } catch (e) {}
     var rv = $('end-review');
     rv.textContent = S.review.length ? '可以再複習的語詞：' + S.review.join('、') : '太厲害了！每一道咒語都在提示內破解。';
@@ -493,7 +543,11 @@
     try { if (S.score > best) localStorage.setItem('wordQuestBest_' + (C.title || ''), S.score); } catch (e) {}
     show('screen-end'); sparks(innerWidth / 2, innerHeight / 3, 50); play('rune');
   }
-  $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0); });
+  $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0); });
+  $('btn-another').addEventListener('click', function () {
+    audioOn(); play('tap'); if (ULTIMATE) WQSettings.saveUsed(C, []);
+    setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0);
+  });
 
   /* ---------- 線索本 ---------- */
   function openNotes() {

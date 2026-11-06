@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>冒險篇章</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.adv-wrap{position:relative;height:100%;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px 14px}
+.adv-top{font-family:var(--serif);color:#ffe9a8;font-size:clamp(24px,4vw,34px);font-weight:900;text-shadow:0 3px 10px #000;letter-spacing:4px}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.dots span{width:12px;height:12px;border-radius:50%;background:rgba(246,241,255,.25);border:1px solid rgba(232,193,90,.5)}
+.dots span.on{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.dots span.done{background:rgba(232,193,90,.55)}
+#adv-card{max-width:720px;max-height:none}
+.adv-say{display:flex;gap:14px;align-items:flex-start}
+.adv-say img{width:84px;height:84px;object-fit:cover;border-radius:12px;border:3px solid #b58f4c;flex:none}
+.adv-say h2{margin:0 0 4px;font-size:1.15em;color:#7a1f1f}
+.adv-say p{margin:.2em 0}
+.ctrl{margin-top:14px;display:flex;flex-direction:column;gap:10px;font-family:var(--sans);font-size:17px}
+.choice{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.55);border:2px solid #c8a868;cursor:pointer;color:#3a2614;text-align:left;font-size:17px}
+.choice.on{background:#fff6d6;border-color:#7a1f1f;box-shadow:0 0 0 3px rgba(122,31,31,.2)}
+.choice b{display:block}
+.choice small{display:block;opacity:.75;font-size:14px}
+.choice .dot{width:22px;height:22px;border-radius:50%;border:2px solid #7a1f1f;flex:none;display:grid;place-items:center}
+.choice.on .dot::after{content:'';width:12px;height:12px;border-radius:50%;background:#7a1f1f}
+.num-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.num-row input[type=number]{width:110px;font-size:22px;font-weight:700;padding:8px 10px;border-radius:10px;border:2px solid #b58f4c;background:#fffdf4;color:#3a2614;font-family:var(--serif)}
+.num-row input[type=range]{flex:1;min-width:180px;accent-color:#7a1f1f}
+.quick{display:flex;gap:8px;flex-wrap:wrap}
+.quick button{border:1.5px solid #b58f4c;background:#fff6d6;color:#3a2614;border-radius:999px;padding:6px 14px;font-size:15px}
+.tog{display:flex;align-items:center;gap:12px;font-weight:700}
+.switch{width:64px;height:34px;border-radius:999px;background:#bba57a;border:0;position:relative;flex:none}
+.switch::after{content:'';position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.switch.on{background:#3aa36b}.switch.on::after{left:34px}
+.adv-nav{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-violet{background:linear-gradient(180deg,#9b7fe8,#6b4bb8);color:#fff;box-shadow:0 5px 0 #3f2a7a,0 10px 24px rgba(0,0,0,.4);font-family:var(--serif)}
+.sum{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-family:var(--sans);font-size:16px;background:rgba(255,255,255,.5);border-radius:12px;padding:12px 16px}
+.sum dt{font-weight:700;color:#7a1f1f}.sum dd{margin:0}
+.bank{background:rgba(255,255,255,.55);border-radius:12px;padding:10px 14px;font-family:var(--sans);font-size:16px;line-height:1.7}
+.bank a{color:#7a1f1f;font-weight:700}
+.unit{font-weight:700}
+.note-s{font-size:14px;opacity:.8;font-family:var(--sans)}
+.back-home{position:absolute;left:14px;top:12px;font-size:14px;color:rgba(246,241,255,.8);background:rgba(20,14,40,.5);border:1px solid rgba(246,241,255,.25);border-radius:999px;padding:6px 12px;z-index:3;text-decoration:none}
+</style>
+</head>
+<body>
+<main id="app">
+  <section class="screen active">
+    <div class="bg" id="adv-bg"></div><div class="veil strong"></div><div class="motes"></div>
+    <a class="back-home" href="index.html">← 回到首頁</a>
+    <div class="adv-wrap">
+      <div class="adv-top">冒險篇章</div>
+      <div class="dots" id="dots"></div>
+      <div id="adv-card" class="parchment"></div>
+      <div class="adv-nav" id="nav"></div>
+    </div>
+  </section>
+</main>
+<script src="content.js"></script>
+<script src="settings.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = WQSettings.loadContent(), S = WQSettings.load(), TOTAL = WQSettings.total(C);
+  function $(id) { return document.getElementById(id); }
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  $('adv-bg').style.backgroundImage = 'url("img/title.webp")';
+  document.querySelectorAll('.motes').forEach(function (m) { for (var i = 0; i < 16; i++) { var d = el('div', 'mote'); d.style.left = Math.random() * 100 + '%'; d.style.animationDuration = 9 + Math.random() * 12 + 's'; d.style.animationDelay = -Math.random() * 20 + 's'; d.style.setProperty('--sway', (Math.random() * 80 - 40) + 'px'); m.appendChild(d); } });
+
+  function choice(box, opts, get, set) {
+    opts.forEach(function (o) {
+      var b = el('button', 'choice' + (get() === o.v ? ' on' : '')); b.type = 'button';
+      b.appendChild(el('span', 'dot')); var t = el('span'); t.appendChild(el('b', '', o.t)); if (o.d) t.appendChild(el('small', '', o.d)); b.appendChild(t);
+      b.addEventListener('click', function () { set(o.v); box.querySelectorAll('.choice').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); });
+      box.appendChild(b);
+    });
+  }
+  function number(box, key, min, max, unit, quick) {
+    var r = el('div', 'num-row'), n = el('input'), rg = el('input');
+    n.type = 'number'; n.min = min; n.max = max; n.value = S[key]; rg.type = 'range'; rg.min = min; rg.max = max; rg.value = S[key];
+    function setv(v) { v = Math.max(min, Math.min(max, Math.round(+v) || min)); S[key] = v; n.value = v; rg.value = v; }
+    n.addEventListener('change', function () { setv(n.value); }); rg.addEventListener('input', function () { setv(rg.value); });
+    r.appendChild(n); r.appendChild(el('span', 'unit', unit)); r.appendChild(rg); box.appendChild(r);
+    if (quick) { var q = el('div', 'quick'); quick.forEach(function (v) { var b = el('button', '', v[1]); b.type = 'button'; b.addEventListener('click', function () { setv(v[0]); }); q.appendChild(b); }); box.appendChild(q); }
+    return setv;
+  }
+  function toggle(box, key, label, onChange) {
+    var r = el('div', 'tog'), b = el('button', 'switch' + (S[key] ? ' on' : '')), t = el('span', '', label + '：' + (S[key] ? '開啟' : '關閉')); b.type = 'button';
+    b.addEventListener('click', function () { S[key] = !S[key]; b.classList.toggle('on', S[key]); t.textContent = label + '：' + (S[key] ? '開啟' : '關閉'); if (onChange) onChange(); });
+    r.appendChild(b); r.appendChild(t); box.appendChild(r);
+  }
+
+  var STEPS = [
+    { title: '序章：黑貓的請託', say: ['喵～老師，我是守護《語詞魔法書》的黑貓。', '在勇者們推開古堡大門以前，請跟著我一步一步準備這段冒險。每一步都可以直接按「下一步」使用預設值喔！'],
+      body: function (box) {
+        var b = el('div', 'bank');
+        b.appendChild(el('div', '', '這次使用的題本：' + (C.__custom ? '老師自訂題本' : '預設題本') + '《' + (C.title || '') + '》'));
+        b.appendChild(el('div', '', '共 ' + C.rooms.length + ' 個房間、' + TOTAL + ' 道咒語（題目）。'));
+        var a = el('a', '', '想換成自己的題目？到「換題本」頁面下載 Excel 題本修改後上傳 →'); a.href = 'teacher.html'; b.appendChild(a);
+        box.appendChild(b);
+      } },
+    { title: '第一章：抽出咒語', say: ['魔法書裡一共有 ' + TOTAL + ' 道咒語。', '這一趟冒險要從題本中抽出幾道呢？抽到的題目會依照房間的順序出現。'],
+      body: function (box) {
+        if (!S.drawCount || S.drawCount > TOTAL) S.drawCount = TOTAL;
+        var q = [[TOTAL, '全部 ' + TOTAL + ' 題']]; [6, 10, 12, 18, 24].forEach(function (n) { if (n < TOTAL) q.push([n, n + ' 題']); });
+        number(box, 'drawCount', 1, TOTAL, '題', q);
+      } },
+    { title: '第二章：破關之後', say: ['勇者打開最後的大門以後，還要接受另一段冒險嗎？'],
+      body: function (box) {
+        choice(box, [
+          { v: 'none', t: '不再挑戰', d: '破關就結束這次冒險。' },
+          { v: 'redraw', t: '從全部題目重新抽題', d: '每一段新冒險都從整本題本重新抽出指定的題數，可能會抽到做過的題目。' },
+          { v: 'norepeat', t: '抽過的不再抽', d: '每一段新冒險只抽還沒出現過的題目，全部題目都抽完才是「終極破關」。' }
+        ], function () { return S.repeat; }, function (v) { S.repeat = v; });
+      } },
+    { title: '第三章：時之沙漏', say: ['要不要讓每一道咒語都有作答時間限制？', '時間到了還沒答對，這題就不能得分喔。'],
+      body: function (box) {
+        var wrap = el('div', 'ctrl'); var nb = el('div');
+        toggle(wrap, 'qTimer', '每題作答時限', function () { nb.style.display = S.qTimer ? '' : 'none'; });
+        nb.appendChild(el('div', 'note-s', '每題可以作答的秒數：')); number(nb, 'qSeconds', 5, 300, '秒', [[15, '15 秒'], [20, '20 秒'], [30, '30 秒'], [45, '45 秒'], [60, '60 秒']]);
+        nb.style.display = S.qTimer ? '' : 'none'; wrap.appendChild(nb); box.appendChild(wrap);
+      } },
+    { title: '第四章：午夜大鐘', say: ['要不要讓午夜大鐘記錄勇者花了多少時間破關？', '開啟後畫面上會一直顯示總時間，結算時也會列出來。'],
+      body: function (box) { var w = el('div', 'ctrl'); toggle(w, 'totalTimer', '過關總時間計時'); box.appendChild(w); } },
+    { title: '第五章：召集勇者', say: ['這次是一位勇者獨自冒險，還是全班一起闖關？', '多人闖關最多 30 位勇者，每個人用自己的平板或手機掃 QR code 加入，跟著老師的大螢幕一起答同一題。'],
+      body: function (box) {
+        choice(box, [
+          { v: 'solo', t: '單人冒險', d: '一台裝置一位勇者，自己探索古堡、解開機關。' },
+          { v: 'multi', t: '多人闖關（最多 30 人）', d: '老師電腦當大螢幕，學生用自己的裝置掃 QR code 加入，有魔法卡、商人和精靈。' }
+        ], function () { return S.mode; }, function (v) { S.mode = v; });
+      } },
+    { multi: true, title: '第六章：神祕的魔法卡商人', say: ['古堡裡住著一位愛做生意的魔法卡商人。', '只要有勇者的分數買得起最便宜的魔法卡，商人就可能在換關卡時突然出現。'],
+      body: function (box) {
+        box.appendChild(el('div', 'note-s', '商人出現的機率：')); number(box, 'merchantProb', 0, 100, '%', [[30, '3 成'], [60, '6 成'], [80, '8 成'], [100, '每次都出現']]);
+        box.appendChild(el('div', 'note-s', '每次可以和商人交易的時間：')); number(box, 'tradeSeconds', 10, 300, '秒', [[30, '30 秒'], [60, '1 分鐘'], [90, '1 分半'], [120, '2 分鐘']]);
+      } },
+    { multi: true, title: '第七章：森林精靈的禮物', say: ['每到魔法卡時刻之前，森林精靈可能會飛來，指定一位勇者改變命運。', '精靈比較常幫助分數排名中下的勇者，同一段冒險不會一直挑同一個人。'],
+      body: function (box) { box.appendChild(el('div', 'note-s', '精靈出現的機率：')); number(box, 'fairyProb', 0, 100, '%', [[10, '1 成'], [30, '3 成'], [50, '5 成'], [100, '每次都出現']]); } },
+    { multi: true, title: '第八章：魔法卡時刻', say: ['每過幾個關卡，勇者們就可以使用魔法卡。', '分數最高的勇者先發動，依序輪到最後一位。每個人看不到別人準備用什麼卡。'],
+      body: function (box) {
+        box.appendChild(el('div', 'note-s', '每過幾個關卡（題目）可以使用一次魔法卡：')); number(box, 'cardEvery', 1, 20, '關', [[3, '3 關'], [5, '5 關'], [6, '6 關'], [10, '10 關']]);
+        box.appendChild(el('div', 'note-s', '每位勇者使用魔法卡的時間：')); number(box, 'cardSeconds', 5, 120, '秒', [[15, '15 秒'], [30, '30 秒'], [45, '45 秒'], [60, '60 秒']]);
+      } },
+    { title: '終章：出發吧！', say: ['準備好了！這就是這一段冒險的設定。', '按下「出發」就會推開古堡大門。下次再打開冒險篇章，會記得這次的設定。'],
+      body: function (box) {
+        var d = el('dl', 'sum');
+        function row(k, v) { d.appendChild(el('dt', '', k)); d.appendChild(el('dd', '', v)); }
+        row('題本', (C.__custom ? '老師自訂' : '預設') + '，共 ' + TOTAL + ' 題');
+        row('單次冒險抽題', (S.drawCount >= TOTAL ? '全部 ' : '') + Math.min(S.drawCount || TOTAL, TOTAL) + ' 題');
+        row('破關之後', WQSettings.REPEAT_NAMES[S.repeat]);
+        row('每題作答時限', S.qTimer ? S.qSeconds + ' 秒' : '不限時');
+        row('過關總時間', S.totalTimer ? '記錄' : '不記錄');
+        row('冒險模式', S.mode === 'multi' ? '多人闖關（最多 30 人）' : '單人冒險');
+        if (S.mode === 'multi') {
+          row('魔法卡商人', '出現機率 ' + S.merchantProb + '%，交易 ' + S.tradeSeconds + ' 秒');
+          row('森林精靈', '出現機率 ' + S.fairyProb + '%');
+          row('魔法卡時刻', '每 ' + S.cardEvery + ' 關一次，每人 ' + S.cardSeconds + ' 秒');
+        }
+        box.appendChild(d);
+      } }
+  ];
+  var cur = 0;
+  function steps() { return STEPS.filter(function (s) { return !s.multi || S.mode === 'multi'; }); }
+  function render() {
+    var list = steps(); if (cur >= list.length) cur = list.length - 1; var st = list[cur];
+    var dots = $('dots'); dots.innerHTML = ''; list.forEach(function (s, i) { dots.appendChild(el('span', i === cur ? 'on' : (i < cur ? 'done' : ''))); });
+    var card = $('adv-card'); card.innerHTML = '';
+    var say = el('div', 'adv-say'), im = el('img'); im.src = 'img/cat.webp'; im.alt = '黑貓'; say.appendChild(im);
+    var t = el('div'); t.appendChild(el('h2', '', st.title)); st.say.forEach(function (l) { t.appendChild(el('p', '', l)); }); say.appendChild(t); card.appendChild(say);
+    var box = el('div', 'ctrl'); st.body(box); card.appendChild(box);
+    card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+    var nav = $('nav'); nav.innerHTML = '';
+    if (cur > 0) { var b = el('button', 'btn btn-violet', '上一步'); b.type = 'button'; b.onclick = function () { cur--; render(); }; nav.appendChild(b); }
+    if (cur < list.length - 1) { var n = el('button', 'btn btn-gold', '下一步'); n.type = 'button'; n.id = 'adv-next'; n.onclick = function () { WQSettings.save(S); cur++; render(); }; nav.appendChild(n); }
+    else {
+      var go = el('button', 'btn btn-gold', S.mode === 'multi' ? '出發！開設多人闖關' : '出發！開始單人冒險'); go.type = 'button'; go.id = 'adv-go';
+      go.onclick = function () { WQSettings.save(S); location.href = S.mode === 'multi' ? 'host.html' + location.search : 'index.html?adv=1'; };
+      nav.appendChild(go);
+      var rs = el('button', 'btn btn-violet', '全部還原預設'); rs.type = 'button'; rs.onclick = function () { S = WQSettings.defaults(); S.drawCount = TOTAL; WQSettings.save(S); cur = 0; render(); }; nav.appendChild(rs);
+    }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
