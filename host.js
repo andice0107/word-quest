@@ -40,7 +40,7 @@
   } });
   function joinUrl() {
     var base = location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
-    return base + 'play.html' + (WQNet.LOCAL ? '?local=1' : '') + '#r=' + CODE + '&b=' + net.broker;
+    return base + 'play.html' + (WQNet.LOCAL ? '?local=1' : '') + '#b=' + net.broker; // 連結不含代碼：學生要自己輸入大螢幕上的代碼
   }
   var pushT = null;
   function push() { if (pushT) return; pushT = setTimeout(function () { pushT = null; net.send(snapshot()); }, 120); }
@@ -92,7 +92,11 @@
     if (d.t === 'ping') return;
     if (d.t === 'sid') {
       var v = String(d.v || '');
-      if (!p.sid && /^[0-9]{1,10}$/.test(v) && Date.now() <= p.sidUntil + 3000) { p.sid = v; if (G.phase === 'lobby') render(); else liveUpdate(); }
+      if (!p.sid && Date.now() <= p.sidUntil + 3000) {
+        if (/^[0-9]{1,10}$/.test(v)) p.sid = v;
+        else if (v === '') p.sidUntil = 0; // 不加學號，直接確認名字
+        if (G.phase === 'lobby') render(); else liveUpdate();
+      }
       push(); return;
     }
     if (G.paused && d.t !== 'leave') return fx(p.pid, 'info', '老師暫停中，請稍等一下。');
@@ -162,8 +166,17 @@
     var left = el('div', 'panel qr'); left.appendChild(el('div', 'h-title', '掃描加入冒險'));
     var box = el('div', 'qr-box');
     if (net.broker != null) { var q = qrcode(0, 'M'); q.addData(joinUrl()); q.make(); box.innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); }
-    left.appendChild(box); left.appendChild(el('div', 'mute', '或打開下面的網址，輸入冒險代碼')); left.appendChild(el('div', 'code', CODE));
-    var u = el('div', 'url', joinUrl().split('#')[0]); left.appendChild(u);
+    left.appendChild(box); left.appendChild(el('div', 'mute', '掃描 QR code 或打開分享連結後，輸入冒險代碼才能加入')); left.appendChild(el('div', 'code', CODE));
+    var u = el('div', 'url', joinUrl()); left.appendChild(u);
+    var sh = el('div', 'share-row');
+    sh.appendChild(btn('hbtn', '📋 複製加入連結', function () {
+      var t = joinUrl();
+      function ok() { alert('已複製加入連結，可以貼到班級群組或 Classroom。\n學生打開連結後，還要輸入大螢幕上的冒險代碼：' + CODE); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, function () { prompt('請複製這個連結：', t); });
+      else prompt('請複製這個連結：', t);
+    }, 'h-copy'));
+    if (navigator.share) sh.appendChild(btn('hbtn', '📤 分享連結', function () { navigator.share({ title: '加入多人闖關', text: '打開連結後，輸入老師大螢幕上的冒險代碼', url: joinUrl() }).catch(function () {}); }, 'h-share'));
+    left.appendChild(sh);
     var right = el('div', 'panel roster'); right.appendChild(el('div', 'h-title', C.titleMain ? C.titleMain + '：' + (C.titleSub || '') : (C.title || '')));
     right.appendChild(el('div', 'gold', '')).id = 'roster-count';
     var chips = el('div', 'set-chips');

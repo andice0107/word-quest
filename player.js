@@ -20,18 +20,19 @@
     var c = el('div', 'p-card'); c.appendChild(el('h2', '', '加入多人闖關'));
     if (msg) c.appendChild(el('p', 'gold', msg));
     var f = el('div', 'join');
-    var ci = el('input'); ci.placeholder = '冒險代碼（看老師的大螢幕）'; ci.value = code; ci.maxLength = 5; ci.autocapitalize = 'characters'; ci.id = 'j-code';
-    if (!code) f.appendChild(ci);
+    /* 掃 QR code 或用分享連結進來，都要自己輸入大螢幕上的冒險代碼，避免別人亂連線 */
+    var ci = el('input'); ci.placeholder = '冒險代碼（看老師的大螢幕）'; ci.value = ''; ci.maxLength = 5; ci.autocapitalize = 'characters'; ci.autocomplete = 'off'; ci.id = 'j-code';
+    f.appendChild(ci);
     f.appendChild(el('div', '', '選擇勇者的性別，系統會送你一位有名字的 8 位元像素勇者。'));
     var g = el('div', 'g'), gm = btn('on', '👦 男生', function () { me.gender = 'm'; gm.classList.add('on'); gf.classList.remove('on'); }), gf = btn('', '👧 女生', function () { me.gender = 'f'; gf.classList.add('on'); gm.classList.remove('on'); });
     gm.id = 'j-m'; gf.id = 'j-f';
     if (saved && saved.gender === 'f') { me.gender = 'f'; gf.classList.add('on'); gm.classList.remove('on'); }
     g.appendChild(gm); g.appendChild(gf); f.appendChild(g);
     f.appendChild(btn('btn btn-gold', '加入冒險', function () {
-      var cd = (code || ci.value).trim().toUpperCase();
+      var cd = ci.value.trim().toUpperCase();
       if (cd.length < 4) return toast('請輸入老師大螢幕上的冒險代碼。', 'bad');
-      if (cd !== code) broker = 0;
-      code = cd; me.pid = (saved && saved.code === cd && saved.pid) || ('p' + Math.random().toString(36).slice(2, 10));
+      code = cd;
+      try { history.replaceState(null, '', location.pathname + location.search + '#r=' + code + '&b=' + broker); } catch (e) {} me.pid = (saved && saved.code === cd && saved.pid) || ('p' + Math.random().toString(36).slice(2, 10));
       save(); connect();
     })).id = 'j-go';
     c.appendChild(f); m.appendChild(c);
@@ -40,6 +41,8 @@
   function connect() {
     if (net) net.close();
     msgCard('正在連線到老師的電腦……', '請稍等，連上後你的像素勇者就會出現。');
+    clearTimeout(connect.t); var cc = code;
+    connect.t = setTimeout(function () { if (!joined && code === cc) { if (net) net.close(); net = null; joinForm('找不到冒險代碼「' + cc + '」，請再看一次大螢幕上的代碼。'); } }, 12000);
     net = WQNet.open({ code: code, role: 'player', broker: broker, onMessage: onDown, onStatus: function (s) {
       if (s === 'online') hello(); var st = $('net-st'); if (st) st.textContent = s === 'online' ? '' : '連線中…';
     } });
@@ -76,13 +79,12 @@
     if (left <= 0) { if (SB) { SB.el.remove(); SB = null; } return; }
     if (!SB) {
       var b = el('div', 'sid-box'); b.appendChild(el('h3', '', '你的勇者名字是「' + mine.name + '」'));
-      b.appendChild(el('div', 'mute', '可以加上你的學號（只能輸入數字），名字下面會顯示。'));
+      b.appendChild(el('div', 'mute', '可以加上你的學號（只能輸入數字），名字下面會顯示；不加學號就直接按「確定」。'));
       var row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.pattern = '[0-9]*'; inp.maxLength = 10; inp.placeholder = '學號'; inp.id = 'sid-in'; inp.autocomplete = 'off';
       inp.addEventListener('input', function () { var v = inp.value.replace(/[^0-9]/g, '').slice(0, 10); if (v !== inp.value) inp.value = v; });
       var ok = btn('btn btn-gold', '確定', function () {
         var v = inp.value.replace(/[^0-9]/g, '');
-        if (!v) return toast('請輸入數字學號，或不加也可以。');
-        sidSent = true; send('sid', { v: v }); toast('已加上學號（' + v + '）', 'good'); sidBox();
+        sidSent = true; send('sid', { v: v }); toast(v ? '已加上學號（' + v + '）' : '好的，就用「' + mine.name + '」這個名字！', 'good'); sidBox();
       }); ok.id = 'sid-go';
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
       row.appendChild(inp); row.appendChild(ok); b.appendChild(row);
