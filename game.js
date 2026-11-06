@@ -366,20 +366,12 @@
     finishQ(o);
   }
 
-  /* 老師批改（長按才打開，避免學生自己按） */
+  /* 老師批改（點一下就打開，維持遊戲順暢） */
   function ungraded() { return S.pending.filter(function (x) { return x.mark === null; }); }
   function updGrade() {
     var n = ungraded().length, b = $('btn-grade');
     b.classList.toggle('hidden', !n); $('grade-badge').textContent = n;
     var eb = $('end-grade'); if (eb) { eb.classList.toggle('hidden', !n); $('end-grade-n').textContent = n; }
-  }
-  function longPress(btn, fn) {
-    var t = null;
-    function stop() { clearTimeout(t); t = null; btn.classList.remove('pressing'); }
-    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); try { btn.setPointerCapture(e.pointerId); } catch (x) {} btn.classList.add('pressing'); t = setTimeout(function () { stop(); fn(); }, 1500); });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
-    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-    btn.addEventListener('click', function () { if (!btn.classList.contains('pressing')) say('這是老師批改的按鈕，請老師長按 2 秒打開。', 3500); });
   }
   function openGrade() {
     play('open'); var ov = $('grade-ov'), list = $('grade-list'); list.innerHTML = '';
@@ -424,7 +416,7 @@
     ov.classList.remove('hidden');
   }
   function afterGrade() { updGrade(); openGrade(); if (S.ended) endGame(true); }
-  longPress($('btn-grade'), openGrade);
+  $('btn-grade').addEventListener('click', openGrade);
   $('grade-close').addEventListener('click', function () { play('tap'); $('grade-ov').classList.add('hidden'); });
 
   /* 每題作答時限 */
@@ -687,7 +679,7 @@
     updGrade(); if (again) return;
     show('screen-end'); sparks(innerWidth / 2, innerHeight / 3, 50); play('rune');
   }
-  longPress($('end-grade-btn'), openGrade);
+  $('end-grade-btn').addEventListener('click', openGrade);
   $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0); });
   $('btn-another').addEventListener('click', function () {
     audioOn(); play('tap'); if (ULTIMATE) WQSettings.saveUsed(C, []);
