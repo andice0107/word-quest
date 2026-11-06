@@ -44,6 +44,7 @@
 .unit{font-weight:700}
 .note-s{font-size:14px;opacity:.8;font-family:var(--sans)}
 .back-home{position:absolute;left:14px;top:12px;font-size:14px;color:rgba(246,241,255,.8);background:rgba(20,14,40,.5);border:1px solid rgba(246,241,255,.25);border-radius:999px;padding:6px 12px;z-index:3;text-decoration:none}
+.bank ul.tools{margin:6px 0 0;padding-left:1.3em;line-height:1.7;font-size:.95em}
 </style>
 </head>
 <body>
@@ -94,12 +95,20 @@
   }
 
   var STEPS = [
-    { title: '序章：黑貓的請託', say: ['喵～老師，我是守護《語詞魔法書》的黑貓。', '在勇者們推開古堡大門以前，請跟著我一步一步準備這段冒險。每一步都可以直接按「下一步」使用預設值喔！'],
+    { title: '序章：黑貓的請託', say: ['喵～老師，我是守護《神奇魔法書》的黑貓。', '在勇者們推開古堡大門以前，請跟著我一步一步準備這段冒險。每一步都可以直接按「下一步」使用預設值喔！'],
       body: function (box) {
         var b = el('div', 'bank');
         b.appendChild(el('div', '', '這次使用的題本：' + (C.__custom ? '老師自訂題本' : '預設題本') + '《' + (C.title || '') + '》'));
         b.appendChild(el('div', '', '共 ' + C.rooms.length + ' 個房間、' + TOTAL + ' 道咒語（題目）。'));
-        var a = el('a', '', '想換成自己的題目？到「換題本」頁面下載 Excel 題本修改後上傳 →'); a.href = 'teacher.html'; b.appendChild(a);
+        var a = el('a', '', '想換成自己的題目？前往「老師設定・換題本」頁面 →'); a.href = 'teacher.html'; b.appendChild(a);
+        var ul = el('ul', 'tools');
+        ['下載「給 AI 的題本設計提示詞」：請 AI 依教材幫你出題本（國語可含手寫、打字題）',
+         '下載國語示範題本，看手寫、打字題要怎麼填',
+         '下載 Excel 題本範本（已填好目前的題目），改想改的格子就好',
+         '上傳改好的題本（可以直接把檔案拖進去），先預覽每一關的題目',
+         '套用到這台裝置，或產生分享連結給全班的裝置換題目',
+         '還原成原本的題目'].forEach(function (t) { ul.appendChild(el('li', '', t)); });
+        b.appendChild(ul);
         box.appendChild(b);
       } },
     { title: '第一章：抽出咒語', say: ['魔法書裡一共有 ' + TOTAL + ' 道咒語。', '這一趟冒險要從題本中抽出幾道呢？抽到的題目會依照房間的順序出現。'],
