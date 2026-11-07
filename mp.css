@@ -304,3 +304,4 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 .levels button{min-width:44px;padding:5px 7px}
 .hbtn.danger{border-color:#ff8a80;color:#ffc2bb}
 .share-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.addtime{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0}

@@ -298,6 +298,7 @@
     var st = el('div', 'strip'); st.id = 'strip';
     list().forEach(function (p) { var m = el('div', 'mini'); m.dataset.pid = p.pid; m.appendChild(px(p)); m.appendChild(el('span', '', p.name)); st.appendChild(m); });
     side.appendChild(st);
+    if (G.timer && G.timer.kind === 'q') side.appendChild(addTimeRow());
     if (!WQSettings.isChoice(Q)) side.appendChild(btn('btn btn-gold', '📺 全班作答監控', openMonitor, 'h-monitor'));
     side.appendChild(btn('btn btn-violet', WQSettings.isChoice(Q) ? '結束本題、公布答案' : '結束作答、開始批改', function () { endQuestion(); }, 'h-reveal'));
     L.appendChild(side); s.appendChild(L); updateStrip(st); liveUpdate();
@@ -421,11 +422,24 @@
     hd.appendChild(el('span', 'mon-q', WQSettings.inputLabel(Q) + '：' + Q.prompt));
     var tm = el('span', 'pill', ''); tm.id = 'mon-time'; hd.appendChild(tm);
     var bar = el('span', 'mon-btns'); maskBar(bar, openMonitor); hd.appendChild(bar);
+    if (G.timer && G.timer.kind === 'q') hd.appendChild(addTimeRow());
     hd.appendChild(btn('btn btn-gold', '關閉監控', closeMonitor, 'mon-close'));
     ov.appendChild(hd);
     var grid = el('div', 'grade-grid mon-grid'); grid.id = 'mon-grid';
     list().forEach(function (p) { grid.appendChild(gradeTile(p, Q, 'live')); });
     ov.appendChild(grid); document.body.appendChild(ov); monTime();
+  }
+  /* 幫學生加作答秒數（跟同步出題工具一樣：+10、+20、+30 秒） */
+  function addTimeRow() {
+    var r = el('div', 'addtime');
+    [10, 20, 30].forEach(function (sec) { r.appendChild(btn('hbtn', '+' + sec + ' 秒', function () { addTime(sec); }, 'h-add' + sec)); });
+    return r;
+  }
+  function addTime(sec) {
+    if (G.phase !== 'question' || !G.timer || G.timer.kind !== 'q') return;
+    G.timer.remain += sec * 1000; G.timer.total = Math.max(G.timer.total, G.timer.remain);
+    liveUpdate(); push(); WQSfx.play('tap');
+    list().forEach(function (p) { if (p.cur && !p.cur.done) fx(p.pid, 'info', '⏳ 老師多給了 ' + sec + ' 秒！'); });
   }
   function closeMonitor() { var m = $('monitor'); if (m) m.remove(); }
   function monTile(p) {
