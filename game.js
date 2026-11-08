@@ -173,9 +173,10 @@
     };
     $('pin-cancel').onclick = function () { ov.classList.add('hidden'); if (cancel) cancel(); };
   }
-  function needPin(go) {
+  function needPin(go, loaded) {
     var n = teacherQs(); if (!n || PIN) return go();
-    askPin('set', '這次冒險有 ' + n + ' 題手寫或造句題，要由老師批改對錯。請老師設定一組 4～8 位數字的密碼（不要讓學生看到），之後按「老師批改」時要輸入這組密碼。請記住這組密碼，存檔後讀檔也會沿用。', go);
+    if (loaded) return askPin('set', '讀檔完成！這次冒險有要由老師批改的手寫或造句題。請老師重新設定一組 4～8 位數字的核對密碼（可以和上次不同，不要讓學生看到），之後按「老師批改」時要輸入這組新密碼。', go);
+    askPin('set', '這次冒險有 ' + n + ' 題手寫或造句題，要由老師批改對錯。請老師設定一組 4～8 位數字的密碼（不要讓學生看到），之後按「老師批改」時要輸入這組密碼。請記住這組密碼；之後讀取記錄檔時，可以重新設定新的密碼。', go);
   }
   function gradeGate() { if (!PIN) return openGrade(); askPin('check', '只有老師可以批改。請輸入開始冒險時設定的核對密碼。', openGrade, function () {}); }
 
@@ -787,14 +788,14 @@
       $('score').textContent = S.score; onboarded = true; cur = null;
       if (S.pending.some(function (it) { return it.v && typeof it.v === 'object'; }))
         WQSettings.loadInk().then(function (ink) { S.pending.forEach(function (it) { if (it.v && typeof it.v === 'object') it.ink = ink; }); }).catch(function () {});
-      PIN = d.pin || null;
+      PIN = null; // 讀檔時請老師重新設定密碼，避免忘記上次的密碼
       needPin(function () {
         updGrade(); show('screen-play');
         if (S.inGate) enterGate();
         else if (S.puzzleDone[S.room]) { if (S.room < ROOMS.length - 1) enterRoom(S.room + 1); else enterGate(); }
         else enterRoom(S.room);
         say('讀檔完成！歡迎回到古堡，接著冒險吧！', 4000);
-      });
+      }, true);
     });
   });
 
