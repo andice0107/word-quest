@@ -61,6 +61,7 @@
   </section>
 </main>
 <script src="content.js"></script>
+<script src="content-guoyu.js"></script>
 <script src="settings.js"></script>
 <script>
 (function () {
@@ -98,12 +99,12 @@
     { title: '序章：黑貓的請託', say: ['喵～老師，我是守護《神奇魔法書》的黑貓。', '在勇者們推開古堡大門以前，請跟著我一步一步準備這段冒險。每一步都可以直接按「下一步」使用預設值喔！'],
       body: function (box) {
         var b = el('div', 'bank');
-        b.appendChild(el('div', '', '這次使用的題本：' + (C.__custom ? '老師自訂題本' : '預設題本') + '《' + (C.title || '') + '》'));
+        b.appendChild(el('div', '', '這次使用的題本：' + (C.__custom ? '老師自訂題本' : C.__demo === 'guoyu' ? '國語題本' : '非學科示範題本') + '《' + (C.title || '') + '》'));
         b.appendChild(el('div', '', '共 ' + C.rooms.length + ' 個房間、' + TOTAL + ' 道咒語（題目）。'));
         var a = el('a', '', '想換成自己的題目？前往「老師設定・換題本」頁面 →'); a.href = 'teacher.html'; b.appendChild(a);
         var ul = el('ul', 'tools');
         ['下載「給 AI 的題本設計提示詞」：請 AI 依教材幫你出題本（國語可含手寫、打字題）',
-         '下載國語示範題本，看手寫、打字題要怎麼填',
+         '下載兩個範例題本（非學科示範題本、國語題本），看各種題型要怎麼填',
          '下載 Excel 題本範本（已填好目前的題目），改想改的格子就好',
          '上傳改好的題本（可以直接把檔案拖進去），先預覽每一關的題目',
          '套用到這台裝置，或產生分享連結給全班的裝置換題目',
@@ -157,7 +158,7 @@
       body: function (box) {
         var d = el('dl', 'sum');
         function row(k, v) { d.appendChild(el('dt', '', k)); d.appendChild(el('dd', '', v)); }
-        row('題本', (C.__custom ? '老師自訂' : '預設') + '，共 ' + TOTAL + ' 題');
+        row('題本', (C.__custom ? '老師自訂題本' : C.__demo === 'guoyu' ? '國語題本' : '非學科示範題本') + '，共 ' + TOTAL + ' 題');
         row('單次冒險抽題', (S.drawCount >= TOTAL ? '全部 ' : '') + Math.min(S.drawCount || TOTAL, TOTAL) + ' 題');
         row('破關之後', WQSettings.REPEAT_NAMES[S.repeat]);
         row('每題作答時限', S.qTimer ? S.qSeconds + ' 秒' : '不限時');

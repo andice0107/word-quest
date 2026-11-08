@@ -169,6 +169,10 @@ window.WQSettings = (function () {
       var saved = localStorage.getItem('wordQuestCustomContent');
       if (saved) { var c = JSON.parse(saved); if (c && c.rooms && c.rooms.length) { c.__custom = true; return c; } }
     } catch (e) {}
+    var d = null; try { d = localStorage.getItem('wordQuestDemo'); } catch (e) {}
+    /* 沒有自訂題本時，可以選「國語題本」或「非學科示範題本」（預設） */
+    if (d === 'guoyu' && window.DEMO_GUOYU) { window.DEMO_GUOYU.__demo = 'guoyu'; return window.DEMO_GUOYU; }
+    if (window.DEFAULT_CONTENT) window.DEFAULT_CONTENT.__demo = 'fun';
     return window.DEFAULT_CONTENT;
   }
   var REPEAT_NAMES = { none: '不接受另一趟挑戰', redraw: '從全部題目重新抽題', norepeat: '抽過的不再抽，全部抽完才是終極破關' };

@@ -266,6 +266,10 @@ button:focus{outline:none} button:focus-visible{outline:3px solid var(--gold);ou
 .start-notes{display:flex;flex-direction:column;gap:8px;max-width:560px;width:100%}
 .sn{display:block;background:rgba(20,14,40,.62);border:1px solid rgba(232,193,90,.35);border-radius:14px;padding:8px 14px;font-size:15px;line-height:1.6;color:var(--ghost);text-decoration:none}
 .sn b{color:#ffe9a8;margin-right:6px}
+.book-pick{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.book-pick span{color:#ffe9a8;font-weight:700}
+.book-pick button{font:inherit;font-size:14px;padding:5px 12px;border-radius:999px;border:1px solid rgba(232,193,90,.5);background:rgba(43,30,82,.7);color:var(--ghost);cursor:pointer}
+.book-pick button.on{background:var(--gold);color:#2a1f4a;border-color:var(--gold);font-weight:700}
 .sn.link:hover{border-color:var(--gold);background:rgba(43,30,82,.8)}
 /* 打字、手寫作答 */
 :root{--pad-bg:#fffaf0;--pad-grid:rgba(184,138,42,.55);--pad-guide:rgba(91,143,76,.35)}

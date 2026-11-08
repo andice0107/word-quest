@@ -125,6 +125,13 @@
   $('instructions').textContent = C.instruction || '';
   $('btn-start').textContent = C.startButton || '開始冒險';
   $('cat-img').src = img('cat'); $('end-cat').src = img('cat');
+  (function () { /* 沒有載入自訂題本時，可以選題本 */
+    var bk = $('book-pick'); if (!bk || C.__custom || !window.DEMO_GUOYU) return; bk.classList.remove('hidden');
+    Array.prototype.forEach.call(bk.querySelectorAll('button'), function (b) {
+      if (b.getAttribute('data-b') === (C.__demo || 'fun')) b.classList.add('on');
+      b.addEventListener('click', function () { if (b.classList.contains('on')) return; try { localStorage.setItem('wordQuestDemo', b.getAttribute('data-b')); } catch (e) {} location.reload(); });
+    });
+  })();
   if (C.__custom || ADV) {
     var tg = $('custom-tag'); tg.classList.remove('hidden');
     tg.textContent = (C.__custom ? '使用老師自訂題目' : '') + (ADV ? (C.__custom ? '・' : '') + '冒險篇章：抽 ' + QCOUNT + ' 題' + (SET.qTimer ? '・每題 ' + SET.qSeconds + ' 秒' : '') : '');

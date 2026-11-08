@@ -46,8 +46,9 @@ small{opacity:.75}
     <p>下載「給 AI 的題本設計提示詞」，整段貼給 AI（Claude、ChatGPT、Gemini 都可以），再附上你的教材或題庫。AI 會先提出冒險主題讓你選，再生成可以直接上傳的 Excel 題本。</p>
     <p><small>國語題本可以有手寫（寫國字、寫注音、改錯字、造詞，答案由老師判斷）和打字（填充、造句）；其他學科以是非題、選擇題為主。</small></p>
     <a class="btn" href="docs/給AI的題本設計提示詞.md" download="給AI的題本設計提示詞.md">下載給 AI 的提示詞</a>
-    <a class="btn" href="samples/demo-guoyu-handwriting.xlsx" download="國語示範題本_手寫與打字.xlsx">下載國語示範題本（含手寫、打字題）</a>
-    <p><small>想先試玩手寫題：下載國語示範題本，再到下面第 2 步上傳、按「套用到這台裝置」，回首頁開始遊戲就能玩到。</small></p>
+    <a class="btn" href="samples/demo-fun.xlsx" download="非學科示範題本_午夜12點.xlsx">下載非學科示範題本（36 題）</a>
+    <a class="btn" href="samples/demo-guoyu.xlsx" download="國語題本_六上國語複習09.xlsx">下載國語題本（38 題，含手寫、造句）</a>
+    <p><small>非學科示範題本的題目來自「課室大富翁」範例（腦筋急轉彎、生活常識、安全、品德）；國語題本來自「師生同步出題」範例「六上國語期中考複習題庫09」（寫國字、寫注音、改錯字、造詞、造句、選擇、是非）。兩個題本都已經內建在遊戲裡，首頁可以直接選；下載下來可以當作自己出題的範例。</small></p>
   </div>
 
   <div class="step">
@@ -82,9 +83,10 @@ small{opacity:.75}
 </div>
 <script src="share.js"></script>
 <script src="content.js"></script>
+<script src="content-guoyu.js"></script>
 <script>
 (function () {
-  var LS = 'wordQuestCustomContent', D = window.DEFAULT_CONTENT, pending = null;
+  var LS = 'wordQuestCustomContent', D = (function () { try { if (localStorage.getItem('wordQuestDemo') === 'guoyu' && window.DEMO_GUOYU) return window.DEMO_GUOYU; } catch (e) {} return window.DEFAULT_CONTENT; })(), pending = null;
   function $(id) { return document.getElementById(id); }
   function current() { try { var c = JSON.parse(localStorage.getItem(LS) || 'null'); if (c && c.rooms) return c; } catch (e) {} return D; }
   function showNow() { var c = current(); $('now').textContent = (c === D ? '原本題目：' : '自訂題目：') + c.title; }
