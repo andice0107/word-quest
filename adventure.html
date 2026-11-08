@@ -112,11 +112,13 @@
         b.appendChild(ul);
         box.appendChild(b);
       } },
-    { title: '第一章：抽出咒語', say: ['魔法書裡一共有 ' + TOTAL + ' 道咒語。', '這一趟冒險要從題本中抽出幾道呢？抽到的題目會依照房間的順序出現。'],
+    { title: '第一章：抽出咒語', say: ['魔法書裡一共有 ' + TOTAL + ' 道咒語。', '這一趟冒險要從題本中抽出幾道呢？工具會把抽到的題目平均分到每個房間。'],
       body: function (box) {
         if (!S.drawCount || S.drawCount > TOTAL) S.drawCount = TOTAL;
-        var q = [[TOTAL, '全部 ' + TOTAL + ' 題']]; [6, 10, 12, 18, 24].forEach(function (n) { if (n < TOTAL) q.push([n, n + ' 題']); });
-        number(box, 'drawCount', 1, TOTAL, '題', q);
+        var MIN = WQSettings.minDraw(C); if (S.drawCount < MIN) S.drawCount = MIN;
+        var q = [[TOTAL, '全部 ' + TOTAL + ' 題']]; [18, 24, 30].forEach(function (n) { if (n < TOTAL && n >= MIN) q.push([n, n + ' 題']); });
+        number(box, 'drawCount', MIN, TOTAL, '題', q);
+        box.appendChild(el('p', 'mute', '工具會隨機抽題，平均分到每個房間（每個房間最多只差 1 題）。題目會留在原本的房間，因為最後的機關要用這個房間的線索。最少 ' + MIN + ' 題，也就是每個房間至少 3 題。'));
       } },
     { title: '第二章：破關之後', say: ['勇者打開最後的大門以後，還要接受另一段冒險嗎？'],
       body: function (box) {

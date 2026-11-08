@@ -18,12 +18,14 @@
       <p id="instructions"></p>
       <div class="start-actions">
         <button id="btn-start" class="btn btn-gold" type="button">開始</button>
+        <button id="btn-load" class="btn btn-violet" type="button">📜 再續前緣</button>
+        <input type="file" id="load-file" accept=".json,application/json" hidden>
         <button id="btn-speak" class="btn btn-round" type="button" aria-label="朗讀說明">
           <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
         </button>
       </div>
       <div class="start-notes">
-        <div class="sn"><b>⚡ 勇者趕時間（單人模式）</b>按上面的按鈕直接進入遊戲，挑戰全部題目。
+        <div class="sn"><b>⚡ 勇者趕時間（單人模式）</b>按上面的按鈕直接進入遊戲，挑戰全部題目。上次沒玩完，可以按「再續前緣」上傳記錄檔接著玩。
           <div id="book-pick" class="book-pick hidden"><span>選擇題本：</span><button type="button" data-b="fun">🧩 非學科示範題本</button><button type="button" data-b="guoyu">✏️ 國語題本（手寫、造句）</button></div></div>
         <a class="sn link" href="adventure.html"><b>👥 多人冒險請先閱讀「冒險篇章」</b>先在設定頁設定好，再開設多人闖關。</a>
       </div>
@@ -56,6 +58,7 @@
       <div class="hud-right">
         <div id="hud-score"><span class="lbl">分數</span><span id="score">0</span><span id="hud-time" class="hidden"></span></div>
         <button id="btn-grade" class="btn-small grade-btn hidden" type="button" aria-label="老師批改">📝<span>老師批改</span><span id="grade-badge" class="badge"></span></button>
+        <button id="btn-save" class="btn-small" type="button" aria-label="存檔">💾<span>存檔</span></button>
         <button id="btn-notes" class="btn-small" type="button" aria-label="線索本">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3h11a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <span>線索本</span><span id="notes-badge" class="badge hidden"></span>

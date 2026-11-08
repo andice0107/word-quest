@@ -305,3 +305,10 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 .hbtn.danger{border-color:#ff8a80;color:#ffc2bb}
 .share-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .addtime{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0}
+
+/* 存檔／讀檔 */
+.resume-box{margin:8px 0;padding:10px 14px;border-radius:14px;background:rgba(143,111,224,.22);border:1px solid rgba(232,193,90,.45);line-height:1.6}
+.resume-box b{color:#ffe9a8}
+.ghosts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ghosts span{padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px dashed rgba(232,193,90,.5);font-size:14px;opacity:.8}
+.hero .claim{position:absolute;left:4px;top:4px;font-size:12px;padding:2px 6px;border-radius:8px;border:1px solid var(--gold);background:rgba(43,30,82,.9);color:#ffe9a8}

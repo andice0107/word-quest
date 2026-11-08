@@ -731,6 +731,36 @@
   $('btn-notes').addEventListener('click', openNotes);
   $('notes-close').addEventListener('click', function () { play('tap'); overlay('notes', false); });
 
+  /* ---------- 存檔／讀檔（記錄檔下載到這台電腦） ---------- */
+  function canSave() { return S && !S.ended && $('screen-play').classList.contains('active') && $('modal').classList.contains('hidden'); }
+  setInterval(function () { var b = $('btn-save'); if (b) b.disabled = !canSave(); }, 400);
+  $('btn-save').addEventListener('click', function () {
+    if (!canSave()) return say('先把題目視窗關掉，回到房間畫面再存檔喔。');
+    play('tap');
+    var st = JSON.parse(JSON.stringify(S, function (k, v) { return k === 'ink' ? undefined : v; }));
+    st.elapsed = Date.now() - S.start;
+    var ok = WQSettings.saveFile({ kind: 'solo', content: C, set: SET, adv: ADV, rooms: ROOMS, picks: PICKS, ultimate: ULTIMATE, state: st }, (C.titleMain || '午夜12點') + '_單人存檔');
+    if (ok) say('存檔完成！記錄檔已下載到這台電腦。下次在首頁按「再續前緣」上傳，就能從這裡接著玩。', 6000);
+  });
+  $('btn-load').addEventListener('click', function () { audioOn(); play('tap'); $('load-file').click(); });
+  $('load-file').addEventListener('change', function (e) {
+    var f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    WQSettings.readSave(f, 'solo', function (d) {
+      if (narration) try { narration.pause(); } catch (x) {}
+      C = d.content; TYPE_NAMES = C.typeNames || {}; SET = d.set || SET; ADV = !!d.adv; ALLQ = WQSettings.total(C);
+      ROOMS = d.rooms; PICKS = d.picks || []; QCOUNT = PICKS.length; TOTAL_STEPS = QCOUNT + ROOMS.length + 1; ULTIMATE = !!d.ultimate;
+      S = d.state; S.start = Date.now() - (S.elapsed || 0); delete S.elapsed; S.ended = false; S.shown = S.score; S.pending = S.pending || [];
+      $('score').textContent = S.score; onboarded = true; cur = null;
+      if (S.pending.some(function (it) { return it.v && typeof it.v === 'object'; }))
+        WQSettings.loadInk().then(function (ink) { S.pending.forEach(function (it) { if (it.v && typeof it.v === 'object') it.ink = ink; }); }).catch(function () {});
+      updGrade(); show('screen-play');
+      if (S.inGate) enterGate();
+      else if (S.puzzleDone[S.room]) { if (S.room < ROOMS.length - 1) enterRoom(S.room + 1); else enterGate(); }
+      else enterRoom(S.room);
+      say('讀檔完成！歡迎回到古堡，接著冒險吧！', 4000);
+    });
+  });
+
   /* ---------- 鍵盤 ---------- */
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { if (!$('notes').classList.contains('hidden')) return overlay('notes', false); if (!$('modal').classList.contains('hidden')) return closeModal(); }

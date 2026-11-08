@@ -42,11 +42,24 @@ window.WQSettings = (function () {
   function total(C) { return allKeys(C).length; }
   function sortKeys(a) { return a.slice().sort(function (x, y) { var p = x.split('-'), q = y.split('-'); return (p[0] - q[0]) || (p[1] - q[1]); }); }
   /* 從題本抽題；used = 已抽過的題目（norepeat 模式用） */
+  var MIN_DRAW = 18; // 每個房間至少 3 題
+  function minDraw(C) { return Math.min(MIN_DRAW, total(C)); }
   function draw(C, n, used) {
     var pool = allKeys(C);
     if (used && used.length) { var u = {}; used.forEach(function (k) { u[k] = 1; }); pool = pool.filter(function (k) { return !u[k]; }); }
+    if (n) n = Math.max(n, minDraw(C));
     if (!n || n >= pool.length) return sortKeys(pool);
-    return sortKeys(shuffle(pool).slice(0, n));
+    /* 依房間平均分配：每個房間抽的題數最多只差 1 題（房間題目不夠時，多的分給其他房間） */
+    var by = {}; pool.forEach(function (k) { var r = k.split('-')[0]; (by[r] = by[r] || []).push(k); });
+    var rooms = shuffle(Object.keys(by)), q = {}, left = n;
+    rooms.forEach(function (r) { q[r] = 0; by[r] = shuffle(by[r]); });
+    while (left > 0) {
+      var open = rooms.filter(function (r) { return q[r] < by[r].length; }); if (!open.length) break;
+      var low = Math.min.apply(null, open.map(function (r) { return q[r]; }));
+      open.filter(function (r) { return q[r] === low; }).some(function (r) { q[r]++; left--; return left <= 0; });
+    }
+    var out = []; rooms.forEach(function (r) { out = out.concat(by[r].slice(0, q[r])); });
+    return sortKeys(out);
   }
   var UNLOCK = [0, 0, 0, 2, 2, 4];
   function copyObj(C, k) { var p = k.split('-'), o = JSON.parse(JSON.stringify(C.rooms[+p[0]].objects[+p[1]])); o.key = k; prepQ(o.q); return o; }
@@ -175,8 +188,31 @@ window.WQSettings = (function () {
     if (window.DEFAULT_CONTENT) window.DEFAULT_CONTENT.__demo = 'fun';
     return window.DEFAULT_CONTENT;
   }
+  /* 存檔／讀檔：記錄檔下載到這台電腦，下次再上傳接著玩 */
+  function stamp() { var d = new Date(), z = function (n) { return ('0' + n).slice(-2); }; return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '_' + z(d.getHours()) + z(d.getMinutes()); }
+  function saveFile(data, base) {
+    var name = prompt('記錄檔的名稱（可以改成班級名稱，例如：五年甲班）：', base + '_' + stamp());
+    if (name === null) return false;
+    name = String(name).trim().replace(/[\\/:*?"<>|]/g, '_') || ('存檔_' + stamp());
+    data.app = 'word-quest-save'; data.v = 1; data.savedAt = new Date().toISOString(); data.name = name;
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    a.download = name + '.json'; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+    return true;
+  }
+  function readSave(file, kind, cb) {
+    var r = new FileReader();
+    r.onload = function () {
+      var d = null; try { d = JSON.parse(r.result); } catch (e) {}
+      if (!d || d.app !== 'word-quest-save' || !d.state) return alert('這個檔案不是午夜12點的記錄檔，請重新選擇。');
+      if (d.kind !== kind) return alert(kind === 'solo' ? '這是多人闖關的記錄檔，請到多人冒險的老師大螢幕，按「再續前緣」讀取。' : '這是單人模式的記錄檔，請到遊戲首頁按「再續前緣」讀取。');
+      cb(d);
+    };
+    r.onerror = function () { alert('讀不到這個檔案，請再試一次。'); };
+    r.readAsText(file);
+  }
   var REPEAT_NAMES = { none: '不接受另一趟挑戰', redraw: '從全部題目重新抽題', norepeat: '抽過的不再抽，全部抽完才是終極破關' };
-  return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, buildRooms: buildRooms, total: total, allKeys: allKeys,
+  return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, minDraw: minDraw, saveFile: saveFile, readSave: readSave, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
     DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, needsTeacher: needsTeacher, heroName: heroName };

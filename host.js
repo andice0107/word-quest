@@ -15,7 +15,7 @@
 
   /* ---------- 狀態 ---------- */
   var G = { phase: 'lobby', players: {}, joinN: 0, seq: [], rooms: [], qi: -1, paused: false, elapsed: 0, timer: null,
-    log: [], fairyPicked: [], used: [], adventure: 1, ultimate: false, merchant: null, turn: null, fairy: null, effect: null, chest: null, queue: [], fxN: 0 };
+    log: [], fairyPicked: [], used: [], adventure: 1, ultimate: false, merchant: null, turn: null, fairy: null, effect: null, chest: null, queue: [], fxN: 0, ghosts: [], resume: null };
   function list() { return Object.keys(G.players).map(function (k) { return G.players[k]; }).sort(function (a, b) { return a.joined - b.joined; }); }
   function online(p) { return Date.now() - p.lastSeen < 20000; }
   function ranked() { return WQCards.ranked(list()); }
@@ -93,7 +93,7 @@
     if (d.t === 'sid') {
       var v = String(d.v || '');
       if (!p.sid && Date.now() <= p.sidUntil + 3000) {
-        if (/^[0-9]{1,10}$/.test(v)) p.sid = v;
+        if (/^[0-9]{1,10}$/.test(v)) { p.sid = v; var gh = G.ghosts.filter(function (x) { return x.sid === v; })[0]; if (gh) claim(p, gh); }
         else if (v === '') p.sidUntil = 0; // 不加學號，直接確認名字
         if (G.phase === 'lobby') render(); else liveUpdate();
       }
@@ -183,16 +183,28 @@
     [('抽 ' + G.seq.length + ' 題'), SET.qTimer ? '每題 ' + SET.qSeconds + ' 秒' : '不限時', '手寫題 60～100 秒・造句 3 分鐘（固定）', SET.totalTimer ? '記錄總時間' : '', '商人 ' + SET.merchantProb + '%・交易 ' + SET.tradeSeconds + ' 秒',
       '精靈 ' + SET.fairyProb + '%', '每 ' + SET.cardEvery + ' 關用一次魔法卡（每人 ' + SET.cardSeconds + ' 秒）', WQSettings.REPEAT_NAMES[SET.repeat]].forEach(function (t) { if (t) chips.appendChild(el('span', '', t)); });
     right.appendChild(chips);
+    if (G.resume) {
+      var rb = el('div', 'resume-box'); rb.appendChild(el('b', '', '📜 已讀取記錄檔「' + G.resume.name + '」'));
+      rb.appendChild(el('div', '', '接著從第 ' + Math.min(G.seq.length, G.resume.at + 1) + ' / ' + G.seq.length + ' 關繼續。勇者輸入冒險代碼加入後，輸入原本的學號，就會認回自己的英雄、分數和魔法卡。沒有學號的勇者，請老師按他頭像左上角的「認領」。'));
+      if (G.ghosts.length) { rb.appendChild(el('div', 'mute', '還沒回來的勇者（' + G.ghosts.length + ' 位）：')); var gw = el('div', 'ghosts'); G.ghosts.forEach(function (x) { gw.appendChild(el('span', '', x.name + (x.sid ? '（' + x.sid + '）' : '') + '・' + x.score + ' 分')); }); rb.appendChild(gw); }
+      right.appendChild(rb);
+    }
     var grid = el('div', 'roster-grid'); grid.id = 'roster';
     list().forEach(function (p) {
       var h = el('div', 'hero' + (online(p) ? '' : ' off')); h.appendChild(el('div', 'nm', p.name)); h.appendChild(el('div', 'sid', p.sid ? '（' + p.sid + '）' : (p.sidUntil > Date.now() ? '輸入學號中…' : ''))); h.appendChild(px(p)); h.appendChild(el('div', 'cl', WQPixel.className(p.seed, p.gender)));
+      if (G.resume && G.ghosts.length && !p.claimed) { var cl = btn('claim', '認領', function () { manualClaim(p); }); h.appendChild(cl); }
       var k = btn('kick', '×', function () { if (confirm('要把「' + p.name + '」移出這場冒險嗎？')) { delete G.players[p.pid]; fx(p.pid, 'kicked', '你已被老師移出這場冒險。'); render(); push(); } }); k.title = '移出'; h.appendChild(k);
       grid.appendChild(h);
     });
     if (!list().length) grid.appendChild(el('div', 'mute', '等待勇者加入中……學生用平板或手機掃描左邊的 QR code，選擇性別後系統會給一個勇者名字，30 秒內可以加上學號。'));
     right.appendChild(grid);
     var act = el('div', 'lobby-actions');
-    act.appendChild(btn('btn btn-gold', '開始冒險', function () { if (!list().length && !confirm('還沒有勇者加入，確定要開始嗎？')) return; G.phase = 'story'; G.storyStep = 0; render(); push(); }, 'h-start'));
+    act.appendChild(btn('btn btn-gold', G.resume ? '繼續冒險' : '開始冒險', function () {
+      if (!list().length && !confirm('還沒有勇者加入，確定要開始嗎？')) return;
+      if (G.resume) { if (G.ghosts.length && !confirm('還有 ' + G.ghosts.length + ' 位存檔中的勇者沒有回來，確定要繼續嗎？\n（之後他們加入時輸入學號，還是可以認回自己的英雄）')) return; return doResume(); }
+      G.phase = 'story'; G.storyStep = 0; render(); push();
+    }, 'h-start'));
+    if (!G.resume) act.appendChild(btn('btn btn-violet', '📜 再續前緣（讀取記錄檔）', function () { $('h-loadfile').click(); }, 'h-load'));
     act.appendChild(btn('btn btn-violet', '回冒險篇章', function () { location.href = 'adventure.html'; }));
     right.appendChild(act);
     lb.appendChild(left); lb.appendChild(right); s.appendChild(lb); liveUpdate();
@@ -240,6 +252,7 @@
     return cur;
   }
   function startQuestion() {
+    CPQ = packState(); CPR = null;
     G.qi++; var it = G.seq[G.qi]; G.phase = 'question'; G.q = { ms: 0, order: [] }; G.mask = true; G.ov = {};
     var rk = ranked(); list().forEach(function (p) { p.rankBefore = rk.indexOf(p) + 1; p.cur = freshCur(p); });
     var fs = WQSettings.forcedSeconds(it.o.q);
@@ -483,7 +496,7 @@
     });
     var rk = ranked(); list().forEach(function (p) { p.rankDelta = (p.rankBefore || rk.length) - (rk.indexOf(p) + 1); });
     G.log.push({ qi: G.qi, room: G.rooms[it.ri].short, name: it.o.name, word: it.o.word, prompt: Q.prompt, options: Q.options || [], answer: Q.answer, q: Q, res: res });
-    G.phase = 'reveal'; render(); push(); WQSfx.play('correct');
+    G.phase = 'reveal'; CPR = packState(); render(); push(); WQSfx.play('correct');
   }
   function renderReveal() {
     var it = G.seq[G.qi], Q = it.o.q, s = stage(), L = el('div', 'qlayout'), c = el('div', 'panel qcard');
@@ -750,14 +763,72 @@
     for (var i = 0; i < n; i++) { var s = el('div', 'spark'), a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 120; s.style.left = x + 'px'; s.style.top = y + 'px'; s.style.setProperty('--dx', Math.cos(a) * r + 'px'); s.style.setProperty('--dy', Math.sin(a) * r + 'px'); $('fx').appendChild(s); setTimeout(s.remove.bind(s), 950); }
   }
 
+  /* ---------- 存檔／讀檔（記錄檔下載到這台電腦，下次上傳接著玩） ---------- */
+  var CPQ = null, CPR = null; // CPQ：這一題開始前；CPR：這一題公布答案後
+  function packState() {
+    var ps = {}; list().forEach(function (p) { var c = JSON.parse(JSON.stringify(p)); c.cur = null; delete c.lastSeen; delete c.claimed; ps[p.pid] = c; });
+    return JSON.parse(JSON.stringify({ players: ps, ghosts: G.ghosts, joinN: G.joinN, seq: G.seq, rooms: G.rooms, qi: G.qi, elapsed: G.elapsed, log: G.log, fairyPicked: G.fairyPicked,
+      used: G.used, adventure: G.adventure, ultimate: G.ultimate, keys: G.keys, early: G.early, fxN: G.fxN, storyStep: G.storyStep || 0 }));
+  }
+  function saveGame() {
+    var st, mode, ph = G.phase;
+    if (ph === 'lobby') { alert(G.resume ? '記錄檔已經讀進來了，按「繼續冒險」開始後再存檔。' : '冒險還沒開始，還不需要存檔。'); return false; }
+    if (ph === 'question' || ph === 'grade') { st = CPQ; mode = 'next'; }
+    else if (['reveal', 'chest', 'merchant', 'fairy', 'cards'].indexOf(ph) >= 0) { st = CPR || packState(); mode = CPR ? 'after' : 'next'; }
+    else { st = packState(); mode = ph; }
+    if (!st) { st = packState(); mode = 'next'; }
+    var noSid = list().filter(function (p) { return !p.sid; }).length;
+    if (noSid && !confirm('有 ' + noSid + ' 位勇者沒有學號。讀檔時，他們要由老師在大螢幕上手動「認領」。\n要繼續存檔嗎？')) return false;
+    var ok = WQSettings.saveFile({ kind: 'multi', content: C, set: SET, mode: mode, state: st }, (C.titleMain || '午夜12點') + '_多人存檔');
+    if (ok) alert('存檔完成！記錄檔已經下載到這台電腦。' + (mode === 'next' && (ph === 'question' || ph === 'grade') ? '\n存檔時正在作答的這一題，讀檔後會重新出題。' : (mode === 'after' && ph !== 'reveal' ? '\n讀檔後會從這一題公布答案之後接著進行。' : '')));
+    return ok;
+  }
+  $('h-save').addEventListener('click', function () { WQSfx.on(); saveGame(); });
+  var lf = document.createElement('input'); lf.type = 'file'; lf.id = 'h-loadfile'; lf.accept = '.json,application/json'; lf.hidden = true; document.body.appendChild(lf);
+  lf.addEventListener('change', function () {
+    var f = lf.files[0]; lf.value = ''; if (!f || G.phase !== 'lobby') return;
+    WQSettings.readSave(f, 'multi', function (d) {
+      var s = d.state; C = d.content; SET = WQSettings.clean ? WQSettings.clean(d.set || SET) : (d.set || SET); ALLQ = WQSettings.total(C); TYPE = C.typeNames || {};
+      ['joinN', 'seq', 'rooms', 'qi', 'elapsed', 'log', 'fairyPicked', 'used', 'adventure', 'ultimate', 'keys', 'early', 'fxN', 'storyStep'].forEach(function (k) { if (s[k] !== undefined) G[k] = s[k]; });
+      G.ghosts = (s.ghosts || []).concat(Object.keys(s.players || {}).map(function (k) { return s.players[k]; }));
+      G.joinN = Math.max(G.joinN || 0, list().length) + 100; G.queue = [];
+      G.resume = { name: d.name || '', mode: d.mode || 'next', at: d.mode === 'next' ? G.qi + 1 : G.qi };
+      list().forEach(function (p) { if (p.sid) { var gh = G.ghosts.filter(function (x) { return x.sid === p.sid; })[0]; if (gh) claim(p, gh); } });
+      render(); push(); alert('已讀取記錄檔「' + (d.name || '') + '」。\n請勇者輸入冒險代碼加入，再輸入原本的學號認回自己的英雄。');
+    });
+  });
+  function claim(p, gh) {
+    ['name', 'sid', 'gender', 'seed', 'score', 'cards', 'correct', 'wrong', 'streak', 'best', 'next', 'room', 'delta', 'rankDelta'].forEach(function (k) { if (gh[k] !== undefined) p[k] = JSON.parse(JSON.stringify(gh[k])); });
+    p.sidUntil = 0; p.claimed = true; G.ghosts = G.ghosts.filter(function (x) { return x !== gh; });
+    fx(p.pid, 'good', '歡迎回來，' + p.name + '！你的分數和魔法卡都回來了。');
+    if (G.phase === 'lobby') render(); else liveUpdate(); push();
+  }
+  function manualClaim(p) {
+    var t = G.ghosts.map(function (x, i) { return (i + 1) + '. ' + x.name + (x.sid ? '（' + x.sid + '）' : '') + '・' + x.score + ' 分'; }).join('\n');
+    var v = prompt('「' + p.name + '」要認回哪一位存檔中的勇者？請輸入號碼：\n' + t); if (v === null) return;
+    var gh = G.ghosts[(+v || 0) - 1]; if (!gh) return alert('沒有這個號碼。');
+    claim(p, gh);
+  }
+  function doResume() {
+    var m = G.resume.mode; G.resume = null; G.timer = null; G.effect = null; G.merchant = null; G.turn = null; G.fairy = null;
+    list().forEach(function (p) { p.cur = null; });
+    if (m === 'after') return afterReveal();
+    if (m === 'next') return gotoNext();
+    if (m === 'story') { G.phase = 'story'; render(); push(); return; }
+    if (m === 'room') { G.phase = 'room'; render(); push(); return; }
+    if (m === 'gate' || m === 'end') { G.phase = m; render(); push(); return; }
+    gotoNext();
+  }
+
   /* ---------- 勇者闖關記錄（只能看，不能改） ---------- */
   var logTab = 'sum', logQ = -1;
   function openLog() { $('h-log').classList.remove('hidden'); renderLog(); }
   $('h-logbtn').addEventListener('click', function () { WQSfx.on(); openLog(); });
-  /* 快下課：直接結束冒險，用目前分數排出名次（不存檔） */
+  /* 快下課：直接結束冒險，用目前分數排出名次（結束前會先問要不要存檔） */
   $('h-endnow').addEventListener('click', function () {
     WQSfx.on();
     if (G.phase === 'lobby' || G.phase === 'end') return alert(G.phase === 'lobby' ? '冒險還沒開始。' : '冒險已經結束了。');
+    if (confirm('結束前要先存檔嗎？\n按「確定」會下載記錄檔，下次可以用「再續前緣」接著玩；按「取消」就不存檔。')) saveGame();
     if (!confirm('要直接結束這段冒險嗎？\n會用目前的分數排出第 1、2、3 名，沒做完的題目就不做了。')) return;
     clearTimeout(doneT); closeMonitor(); G.timer = null; G.paused = false; $('h-pause').textContent = '⏸ 暫停'; $('h-pause').classList.remove('on');
     G.merchant = null; G.effect = null; G.turn = null; G.fairy = null; G.queue = []; G.early = { done: Math.max(0, G.qi + (G.phase === 'question' || G.phase === 'grade' ? 0 : 1)), total: G.seq.length };
