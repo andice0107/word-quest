@@ -56,6 +56,9 @@ button:focus{outline:none} button:focus-visible{outline:3px solid var(--gold);ou
 .teacher-link{position:absolute;right:14px;bottom:12px;font-size:13px;color:rgba(246,241,255,.65);background:rgba(20,14,40,.5);
   border:1px solid rgba(246,241,255,.25);border-radius:999px;padding:6px 12px}
 .custom-tag{position:absolute;left:14px;bottom:12px;font-size:13px;color:#ffe9a8;background:rgba(107,75,184,.6);border-radius:999px;padding:6px 12px}
+.custom-tag{text-decoration:none;z-index:5;cursor:pointer;border:1px solid rgba(232,193,90,.5)}
+.custom-tag::after{content:" ›"}
+.custom-tag:hover{background:rgba(107,75,184,.9)}
 
 /* ---------- story ---------- */
 .story-wrap{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:20px}
