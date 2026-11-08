@@ -131,7 +131,7 @@ small{opacity:.75}
       ['   寫國字的參考答案填正確的字（例如 朋友）；改錯字填「錯→正」（例如 在→再；兩個錯字寫成 鶯→鷹；援→緩），學生只要在格子裡依序寫出正確的字，格數會自動決定；寫注音填注音，每個字用空格隔開。'],
       ['   「田字格數」通常空白，工具會依參考答案自動決定；造詞的學生可以自己按「＋增加／－減少」調整格子（最少 2 格、最多 10 格），這裡填的是一開始的格數，空白就是 2 格。'],
       ['   填充題如果是要學生「寫出國字或注音」：答案是 1～4 個字的國字或注音，上傳時會自動改成手寫（寫國字／寫注音），題目裡要附上目標字、語詞的注音（寫國字）或國字（寫注音）；5 個字以上（含 5 個字）的答案才保留打字。'],
-      ['   「字的提示」：寫國字填每個字的部件提示（例如「奪」填 大＋隹＋寸），改錯字填每個正確字的部首意義（例如「距」填 和腳、走路有關），提示裡不要寫出答案字；每個字一個，用；分隔，依字的順序。學生按「💡 提示」看了某個字的提示，那個字答對只得 30 分（沒看提示答對 60 分），每個字分開計分。'],
+      ['   「字的提示」：寫國字填每個字的一個部件（例如「奪」填 上面是「大」，只給一個部件），改錯字填每個正確字的部首意義（例如「距」填 和腳、走路有關），提示裡不要寫出答案字；每個字一個，用；分隔，依字的順序。學生按「💡 提示」看了某個字的提示，那個字答對只得 30 分（沒看提示答對 60 分），每個字分開計分。'],
       ['   部首意義提示絕對不能寫出部首本身或它的變形、俗稱（例如「水部」「三點水」「和水有關」都不行，要寫「和液體、河流有關」）。上傳時工具會自動檢查，說出部首的提示會被拿掉。'],
       ['10. 改好後存檔，回到老師設定頁面上傳。']];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(help), '說明');
@@ -189,6 +189,7 @@ small{opacity:.75}
   }
   function rows(wb, name) { var ws = wb.Sheets[name]; if (!ws) throw new Error('找不到「' + name + '」工作表'); return XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }).slice(1); }
   function parse(wb) {
+    TRIM = { n: 0, ex: '' };
     var errs = [], warns = [], base = JSON.parse(JSON.stringify(D));
     var c = { typeNames: base.typeNames, story: {}, gate: {}, rooms: [] };
     var srows = rows(wb, '故事'), letter = [];
@@ -235,6 +236,7 @@ small{opacity:.75}
     });
     c.rooms = c.rooms.filter(Boolean);
     c.rooms.forEach(function (rm, i) { fixClues(rm, i, warns); });
+    if (TRIM.n) warns.push('有 ' + TRIM.n + ' 個部件提示給了不只一個部件（等於直接給答案），已自動只留第一個部件，例如' + TRIM.ex);
     if (!c.rooms.length) errs.push('「關卡」工作表沒有任何關卡');
     c.rooms.forEach(function (rm, i) {
       if (!rm.objects.length) errs.push('第 ' + (i + 1) + ' 關沒有任何題目');
@@ -247,21 +249,39 @@ small{opacity:.75}
   }
   /* 線索不能直接寫出機關答案：如果有，工具自動改成「分段線索」（每條只給一部分），輪流放到這個房間的題目，
      遊戲時沒抽到的線索會變成「古書殘頁」，所以機關一定解得開 */
+  var TRIM = { n: 0, ex: '' };
   function fixClues(rm, i, warns) {
     var p = rm.puzzle, os = rm.objects; if (!p || !os.length) return;
     var leak, pieces = [];
+    function rnd(n) { return Math.floor(Math.random() * n); }
+    function expr(d) { /* 把一個數字藏在算式裡，例如 3 →「7 減 4」「1 加 2」 */
+      var op = [], x = 1 + rnd(5), y;
+      op.push((d + x) + ' 減 ' + x);
+      if (d >= 2) { y = 1 + rnd(d - 1); op.push(y + ' 加 ' + (d - y)); }
+      if (d >= 2 && d % 2 === 0) op.push((d / 2) + ' 的 2 倍');
+      if (d && d % 3 === 0) op.push((d / 3) + ' 的 3 倍');
+      return op[rnd(op.length)];
+    }
+    var GEN = /^(密碼從左邊數來第 \d+ 位數字是 \d|第 \d+ 個要放「)/;
     if (p.type === 'code') {
-      var a = String(p.answer || ''); leak = a.length >= 2 && os.some(function (o) { return String(o.clue || '').replace(/\s/g, '').indexOf(a) >= 0; });
-      a.split('').forEach(function (d, k) { pieces.push('密碼從左邊數來第 ' + (k + 1) + ' 位數字是 ' + d); });
+      var a = String(p.answer || ''); leak = a.length >= 2 && os.some(function (o) { var t = String(o.clue || ''); return GEN.test(t) || t.replace(/\s/g, '').indexOf(a) >= 0; });
+      var ds = a.split('').map(Number);
+      ds.forEach(function (d, k) {
+        if (k === 0 || k % 2 === 0) pieces.push('密碼的第 ' + (k + 1) + ' 位數字，是「' + expr(d) + '」的答案');
+        else { var df = d - ds[k - 1]; pieces.push('密碼的第 ' + (k + 1) + ' 位數字' + (df === 0 ? '和第 ' + k + ' 位一樣' : '比第 ' + k + ' 位' + (df > 0 ? '大 ' + df : '小 ' + (-df)))); }
+      });
     } else if (p.type === 'sequence') {
       var nm = p.items.map(function (it) { return it.name; });
       /* 一條線索就照正確順序列出全部項目（而且有 → 或「順序」字樣）＝直接給答案 */
       leak = nm.length >= 2 && os.some(function (o) {
         var t = String(o.clue || ''), last = -1;
+        if (GEN.test(t)) return true;
         if (!/→|->|>|＞|順序|依序/.test(t)) return false;
         return p.items.every(function (it) { var at = [it.name, it.label].filter(Boolean).map(function (x) { return t.indexOf(x, last + 1); }).filter(function (x) { return x > last; }); if (!at.length) return false; last = Math.min.apply(null, at); return true; });
       });
-      nm.forEach(function (x, k) { pieces.push('第 ' + (k + 1) + ' 個要放「' + x + '」'); });
+      /* 相鄰關係線索：要把全部線索串起來才排得出順序 */
+      for (var k = 1; k < nm.length; k++) pieces.push('「' + nm[k] + '」緊緊排在「' + nm[k - 1] + '」的後面');
+      if (nm.length >= 3) pieces.push('「' + nm[nm.length - 1] + '」不是第一個');
     } else {
       var ok = p.items[p.answer] || {}, re = new RegExp('第\\s*' + (p.answer + 1) + '\\s*個');
       leak = os.some(function (o) { var t = String(o.clue || ''); return (ok.name && t.indexOf(ok.name) >= 0) || re.test(t); });
@@ -296,7 +316,11 @@ small{opacity:.75}
       var t = tg[i]; if (!h || !t) return;
       if (h.indexOf(t) === 0 && /^[：:\s]/.test(h.slice(t.length))) { h = hs[i] = h.slice(t.length).replace(/^[：:\s]+/, ''); if (!h) return; } // 「鷹：广＋…」開頭的字自動去掉
       if (h.indexOf(t) >= 0) { hs[i] = ''; warns.push(line + '：第 ' + (i + 1) + ' 字的提示直接寫出了答案「' + t + '」，已自動拿掉，請改寫'); return; }
-      if (q.kind !== 'correction') return;
+      if (q.kind !== 'correction') { /* 部件提示只給一個部件：「左邊言、右邊川」→「左邊言」 */
+        var one = h.split(/[＋+、，,；;／/與和及內]|\s(?=\S)|(?=右邊|下面|中間|裡面|外面|右半|下半)/)[0].replace(/[\s，、。]+$/, '');
+        if (one && one !== h) { hs[i] = one; TRIM.n++; if (!TRIM.ex) TRIM.ex = line + '「' + h + '」→「' + one + '」'; }
+        return;
+      }
       var r = radOf(t), bad = r ? ((window.WQ_RAD.names || {})[r] || [r]) : [], hit = bad.filter(function (b) { return h.indexOf(b) >= 0; })[0];
       if (hit) { hs[i] = ''; warns.push(line + '：第 ' + (i + 1) + ' 字「' + t + '」的部首意義提示含有「' + hit + '」，等於說出部首（' + r + '部），已自動拿掉；請改寫成不含部首的說法'); }
     });

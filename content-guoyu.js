@@ -55,7 +55,7 @@ window.DEMO_GUOYU = {
             "answerText": "奪",
             "speaker": "老工匠畫像",
             "charHints": [
-              "上面是「大」，中間是「隹」，下面是「寸」"
+              "中間是「隹」"
             ]
           },
           "clue": "畫框背面的殘頁：「蝙蝠一定在明月之後才出現。」"
@@ -79,7 +79,7 @@ window.DEMO_GUOYU = {
             "answerText": "偏",
             "speaker": "魔鏡",
             "charHints": [
-              "左邊是「亻」，右邊是「扁」"
+              "右邊是「扁」"
             ]
           },
           "clue": "鏡面浮出霧字：「南瓜燈緊跟在蝙蝠之後亮起。」"
@@ -280,7 +280,7 @@ window.DEMO_GUOYU = {
             "answerText": "預",
             "speaker": "黑貓",
             "charHints": [
-              "左邊是「予」，右邊是「頁」"
+              "右邊是「頁」"
             ]
           },
           "clue": "鎖頭上的刻痕：「第二個數字，是第一個數字的一半。」"
@@ -439,7 +439,7 @@ window.DEMO_GUOYU = {
             "answerText": "傲",
             "speaker": "水晶球",
             "charHints": [
-              "左邊是「亻」，右邊是「敖」（土＋方＋攵）"
+              "左邊是「亻」"
             ]
           },
           "clue": "水晶球底座寫著：「真正的樓梯，不是紅色的。」"
@@ -456,14 +456,14 @@ window.DEMO_GUOYU = {
             "options": [],
             "answer": -1,
             "hint1": "卓見是高明的見解。",
-            "hint2": "上面是「卜」，下面是「早」。",
+            "hint2": "下面是「早」。",
             "explain": "答案是「卓」，語詞寫成「卓見」。",
             "input": "draw",
             "kind": "hanzi",
             "answerText": "卓",
             "speaker": "魔法師霍爾",
             "charHints": [
-              "上面是「卜」，下面是「早」"
+              "下面是「早」"
             ]
           },
           "clue": "鏡子背面：「真正的樓梯上，畫著星星。」"
@@ -618,7 +618,7 @@ window.DEMO_GUOYU = {
             "answerText": "稠",
             "speaker": "小幽靈",
             "charHints": [
-              "左邊是「禾」，右邊是「周」"
+              "右邊是「周」"
             ]
           },
           "clue": "小幽靈小聲說：「白色燈籠要最先點亮。」"
@@ -642,7 +642,7 @@ window.DEMO_GUOYU = {
             "answerText": "乳",
             "speaker": "南瓜湯老闆",
             "charHints": [
-              "左邊是「孚」（爫＋子），右邊是「乚」"
+              "右邊是「乚」"
             ]
           },
           "clue": "老闆指著招牌說：「綠色燈籠緊接在白色燈籠之後。」"
@@ -804,7 +804,7 @@ window.DEMO_GUOYU = {
             "answerText": "晒",
             "speaker": "黑貓",
             "charHints": [
-              "左邊是「日」，右邊是「西」"
+              "右邊是「西」"
             ]
           },
           "clue": "大鍋邊緣刻著：「密碼的順序是：蝙蝠翅膀、南瓜籽、月光露。」"
@@ -828,7 +828,7 @@ window.DEMO_GUOYU = {
             "answerText": "陶",
             "speaker": "藥水瓶",
             "charHints": [
-              "左邊是「阝」，右邊是「匋」（勹＋缶）"
+              "左邊是「阝」"
             ]
           },
           "clue": "藥瓶標籤：「蝙蝠翅膀放三份。」"
@@ -961,7 +961,7 @@ window.DEMO_GUOYU = {
             "answerText": "撫",
             "speaker": "大鐘",
             "charHints": [
-              "左邊是「扌」，右邊是「無」"
+              "右邊是「無」"
             ]
           },
           "clue": "齒輪上刻著：「水晶鈴第一個響起。」"
