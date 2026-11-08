@@ -49,13 +49,29 @@ window.WQSettings = (function () {
   function minDraw(C) { return Math.min(MIN_DRAW, total(C)); }
   function maxDraw(C) { return Math.min(total(C), C.rooms.length * ROOM_MAX); }
   function defDraw(C) { return Math.min(total(C), C.rooms.length * ROOM_DEF); }
+  /* 依題型分層抽題、平均穿插：題庫裡寫字題很多時，也不會一整個房間都是同一種題型 */
+  function typeOf(C, k) { var p = k.split('-'), q = (C.rooms[+p[0]].objects[+p[1]] || {}).q || {}; return (q.input || 'choice') === 'draw' ? q.kind || 'write' : (q.input === 'tf' ? 'choice' : (q.input || 'choice')); }
+  function groups(C, keys) { var g = {}; keys.forEach(function (k) { var t = typeOf(C, k); (g[t] = g[t] || []).push(k); }); return g; }
+  function stratified(C, pool, n) {
+    var g = groups(C, pool), ts = Object.keys(g), tot = pool.length, out = [];
+    var quota = ts.map(function (t) { var x = n * g[t].length / tot; return { t: t, q: Math.floor(x), r: x - Math.floor(x) }; });
+    var left = n - quota.reduce(function (s, x) { return s + x.q; }, 0);
+    shuffle(quota).sort(function (a, b) { return b.r - a.r; }).slice(0, left).forEach(function (x) { x.q++; });
+    quota.forEach(function (x) { out = out.concat(shuffle(g[x.t]).slice(0, x.q)); });
+    return out;
+  }
+  function mixOrder(C, keys) {
+    var g = groups(C, keys), all = [];
+    Object.keys(g).forEach(function (t) { var m = g[t].length; shuffle(g[t]).forEach(function (k, i) { all.push({ k: k, v: (i + Math.random()) / m }); }); });
+    return all.sort(function (a, b) { return a.v - b.v; }).map(function (x) { return x.k; });
+  }
   function draw(C, n, used) {
     var pool = allKeys(C);
     if (used && used.length) { var u = {}; used.forEach(function (k) { u[k] = 1; }); pool = pool.filter(function (k) { return !u[k]; }); }
     n = n ? Math.min(Math.max(n, minDraw(C)), maxDraw(C)) : defDraw(C);
     /* 每次都從整本題本隨機抽題（題目和房間不綁定，buildRooms 再隨機分到各房間） */
     pool = shuffle(pool);
-    return !n || n >= pool.length ? pool : pool.slice(0, n);
+    return !n || n >= pool.length ? pool : stratified(C, pool, n);
   }
   /* 平均分配：每個房間的題數最多只差 1 題，不超過房間的物品數 */
   function spread(caps, n) {
@@ -75,7 +91,7 @@ window.WQSettings = (function () {
   function buildRooms(C, keys, opts) {
     var out = [];
     if (opts && opts.mix) {
-      var ks = shuffle(keys), nr = Math.max(1, Math.min(C.rooms.length, Math.ceil(ks.length / ROOM_DEF))), at = 0;
+      var ks = mixOrder(C, keys), nr = Math.max(1, Math.min(C.rooms.length, Math.ceil(ks.length / ROOM_DEF))), at = 0;
       for (var ri = 0; ri < nr; ri++) {
         var cnt = Math.floor(ks.length / nr) + (ri < ks.length % nr ? 1 : 0);
         var room = JSON.parse(JSON.stringify(C.rooms[ri]));
@@ -84,7 +100,7 @@ window.WQSettings = (function () {
       }
       return out;
     }
-    var qs = shuffle(keys), at = 0, cnt = spread(C.rooms.map(function (r) { return Math.min(ROOM_MAX, r.objects.length); }), qs.length);
+    var qs = mixOrder(C, keys), at = 0, cnt = spread(C.rooms.map(function (r) { return Math.min(ROOM_MAX, r.objects.length); }), qs.length);
     C.rooms.forEach(function (r, i) {
       if (!cnt[i]) return;
       var objs = shuffle(r.objects.map(function (_, j) { return j; })).slice(0, cnt[i]).map(function (j, n) {
