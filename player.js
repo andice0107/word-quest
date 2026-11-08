@@ -72,18 +72,20 @@
   function toast(t, k) { var x = el('div', 'toast ' + (k || ''), t); document.body.appendChild(x); setTimeout(x.remove.bind(x), 4100); }
   function msgCard(t, p) { var m = $('p-main'); m.innerHTML = ''; var c = el('div', 'p-card'); c.appendChild(el('h2', '', t)); if (p) c.appendChild(el('p', '', p)); m.appendChild(c); sig = ''; }
 
-  /* ---------- 學號：取得勇者後 30 秒內可以加上（只能輸入數字） ---------- */
+  /* ---------- 學號：取得勇者後 30 秒內可以加上（固定 4 碼數字：年級＋班級＋座號） ---------- */
   var SB = null, sidSent = false;
   function sidBox() {
     var left = mine && !mine.sid && !sidSent ? mine.sidR - (performance.now() - recvAt) : 0;
     if (left <= 0) { if (SB) { SB.el.remove(); SB = null; } return; }
     if (!SB) {
       var b = el('div', 'sid-box'); b.appendChild(el('h3', '', '你的勇者名字是「' + mine.name + '」'));
-      b.appendChild(el('div', 'mute', '可以加上你的學號（只能輸入數字），名字下面會顯示；不加學號就直接按「確定」。'));
-      var row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.pattern = '[0-9]*'; inp.maxLength = 10; inp.placeholder = '學號'; inp.id = 'sid-in'; inp.autocomplete = 'off';
-      inp.addEventListener('input', function () { var v = inp.value.replace(/[^0-9]/g, '').slice(0, 10); if (v !== inp.value) inp.value = v; });
+      if (S && S.rs) b.appendChild(el('div', 'gold', '老師讀取了上次的存檔！輸入你的 4 碼學號，就能找回上次的勇者、分數和魔法卡。'));
+      b.appendChild(el('div', 'mute', '請輸入你自己的 4 碼學號：年級＋班級＋座號。例如 4 年 5 班 6 號是 4506，6 年 2 班 17 號是 6217。不用想名字，輸入學號就好！'));
+      var row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.pattern = '[0-9]*'; inp.maxLength = 4; inp.placeholder = '4 碼學號'; inp.id = 'sid-in'; inp.autocomplete = 'off';
+      inp.addEventListener('input', function () { var v = inp.value.replace(/[^0-9]/g, '').slice(0, 4); if (v !== inp.value) inp.value = v; });
       var ok = btn('btn btn-gold', '確定', function () {
         var v = inp.value.replace(/[^0-9]/g, '');
+        if (v && v.length !== 4) { toast('學號要剛好 4 碼，例如 4506（4 年 5 班 6 號）', 'bad'); inp.focus(); return; }
         sidSent = true; send('sid', { v: v }); toast(v ? '已加上學號（' + v + '）' : '好的，就用「' + mine.name + '」這個名字！', 'good'); sidBox();
       }); ok.id = 'sid-go';
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });

@@ -66,7 +66,7 @@
       }),
       merchant: G.merchant ? { stock: G.merchant.stock, done: Object.keys(G.merchant.done) } : null,
       turn: G.turn ? { order: G.turn.order, idx: G.turn.idx } : null,
-      effect: G.effect, fairy: G.fairy && G.fairy.shown ? G.fairy : null, ultimate: G.ultimate, early: !!G.early,
+      rs: G.ghosts.length > 0, effect: G.effect, fairy: G.fairy && G.fairy.shown ? G.fairy : null, ultimate: G.ultimate, early: !!G.early,
       settings: { qTimer: SET.qTimer, qSeconds: SET.qSeconds, repeat: SET.repeat } };
   }
 
@@ -93,7 +93,7 @@
     if (d.t === 'sid') {
       var v = String(d.v || '');
       if (!p.sid && Date.now() <= p.sidUntil + 3000) {
-        if (/^[0-9]{1,10}$/.test(v)) { p.sid = v; var gh = G.ghosts.filter(function (x) { return x.sid === v; })[0]; if (gh) claim(p, gh); }
+        if (/^[0-9]{4}$/.test(v)) { p.sid = v; var gh = G.ghosts.filter(function (x) { return x.sid === v; })[0]; if (gh) claim(p, gh); }
         else if (v === '') p.sidUntil = 0; // 不加學號，直接確認名字
         if (G.phase === 'lobby') render(); else liveUpdate();
       }
@@ -185,7 +185,7 @@
     right.appendChild(chips);
     if (G.resume) {
       var rb = el('div', 'resume-box'); rb.appendChild(el('b', '', '📜 已讀取記錄檔「' + G.resume.name + '」'));
-      rb.appendChild(el('div', '', '接著從第 ' + Math.min(G.seq.length, G.resume.at + 1) + ' / ' + G.seq.length + ' 關繼續。勇者輸入冒險代碼加入後，輸入原本的學號，就會認回自己的英雄、分數和魔法卡。沒有學號的勇者，請老師按他頭像左上角的「認領」。'));
+      rb.appendChild(el('div', '', '接著從第 ' + Math.min(G.seq.length, G.resume.at + 1) + ' / ' + G.seq.length + ' 關繼續。勇者輸入冒險代碼加入後，輸入自己的 4 碼學號（例如 4 年 5 班 6 號是 4506），就會認回自己的英雄、分數和魔法卡。沒有學號的勇者，請老師按他頭像左上角的「認領」。'));
       if (G.ghosts.length) { rb.appendChild(el('div', 'mute', '還沒回來的勇者（' + G.ghosts.length + ' 位）：')); var gw = el('div', 'ghosts'); G.ghosts.forEach(function (x) { gw.appendChild(el('span', '', x.name + (x.sid ? '（' + x.sid + '）' : '') + '・' + x.score + ' 分')); }); rb.appendChild(gw); }
       right.appendChild(rb);
     }
@@ -196,7 +196,7 @@
       var k = btn('kick', '×', function () { if (confirm('要把「' + p.name + '」移出這場冒險嗎？')) { delete G.players[p.pid]; fx(p.pid, 'kicked', '你已被老師移出這場冒險。'); render(); push(); } }); k.title = '移出'; h.appendChild(k);
       grid.appendChild(h);
     });
-    if (!list().length) grid.appendChild(el('div', 'mute', '等待勇者加入中……學生用平板或手機掃描左邊的 QR code，選擇性別後系統會給一個勇者名字，30 秒內可以加上學號。'));
+    if (!list().length) grid.appendChild(el('div', 'mute', '等待勇者加入中……學生用平板或手機掃描左邊的 QR code，選擇性別後系統會給一個勇者名字，30 秒內輸入自己的 4 碼學號（年級＋班級＋座號，例如 4506）。'));
     right.appendChild(grid);
     var act = el('div', 'lobby-actions');
     act.appendChild(btn('btn btn-gold', G.resume ? '繼續冒險' : '開始冒險', function () {
@@ -794,7 +794,7 @@
       G.joinN = Math.max(G.joinN || 0, list().length) + 100; G.queue = [];
       G.resume = { name: d.name || '', mode: d.mode || 'next', at: d.mode === 'next' ? G.qi + 1 : G.qi };
       list().forEach(function (p) { if (p.sid) { var gh = G.ghosts.filter(function (x) { return x.sid === p.sid; })[0]; if (gh) claim(p, gh); } });
-      render(); push(); alert('已讀取記錄檔「' + (d.name || '') + '」。\n請勇者輸入冒險代碼加入，再輸入原本的學號認回自己的英雄。');
+      render(); push(); alert('已讀取記錄檔「' + (d.name || '') + '」。\n請勇者輸入冒險代碼加入，再輸入自己的 4 碼學號（例如 4506）認回自己的英雄。');
     });
   });
   function claim(p, gh) {
