@@ -308,7 +308,7 @@
       c.appendChild(el('div', 'big-res', cu.c ? '✔ 老師批改：答對！' : (cu.cr ? '◐ 老師批改：答對 ' + cu.cr + ' / ' + cu.ct + ' 個字' : '✘ 這題沒答對')));
       if (cu.ct) c.appendChild(el('p', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分' + (cu.cm ? '：' + cu.cm.map(function (x, i) { return '第 ' + (i + 1) + ' 字' + (x ? '✓' : '✗') + (cu.hu && cu.hu[i] ? '💡' : ''); }).join('　') + (cu.hu && cu.hu.some(Boolean) ? '（💡 看了提示的字答對得 ' + WQSettings.HINT_PTS + ' 分）' : '') : '')));
       if (cu.pts || cu.b) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
-      var md = el('div', 'model'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', String(q.answerText || '（老師判斷）').split(/[|｜]/).join(' 或 '))); c.appendChild(md);
+      var md = el('div', 'model'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', String(q.rt || q.answerText || '（老師判斷）').split(/[|｜]/).join(' 或 '))); c.appendChild(md);
       showMine(c, q, true);
       if (q.explain) c.appendChild(el('p', 'mute', q.explain));
       c.appendChild(el('p', '', '你現在是第 ' + mine.rank + ' 名，' + (mine.delta > 0 ? '這題 +' + mine.delta + ' 分' : '這題沒有加分')));

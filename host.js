@@ -50,7 +50,7 @@
     var it = G.seq[G.qi], q = null, ps = list(), rk = ranked();
     if (it && (G.phase === 'question' || G.phase === 'reveal' || G.phase === 'grade')) {
       var Q = it.o.q, rv = G.phase === 'reveal';
-      q = { input: WQSettings.inputOf(Q), kind: Q.kind || '', cells: Q.cells || 0, label: WQSettings.inputLabel(Q), answerText: rv ? Q.answerText || '' : '', cellN: WQSettings.inputOf(Q) === 'draw' ? WQSettings.cellCount(Q) : 0, ch: WQSettings.charHints(Q),
+      q = { input: WQSettings.inputOf(Q), kind: Q.kind || '', cells: Q.cells || 0, label: WQSettings.inputLabel(Q), answerText: rv ? Q.answerText || '' : '', rt: rv ? Q.refText || '' : '', cellN: WQSettings.inputOf(Q) === 'draw' ? WQSettings.cellCount(Q) : 0, ch: WQSettings.charHints(Q),
         prompt: Q.prompt, options: Q.options || [], speaker: Q.speaker || it.o.name, type: TYPE[Q.type] || Q.type || '', hint1: Q.hint1, hint2: Q.hint2,
         answer: G.phase === 'reveal' ? Q.answer : -1, explain: G.phase === 'reveal' ? Q.explain : '', word: G.phase === 'reveal' ? it.o.word : '', clue: G.phase === 'reveal' ? it.o.clue : '' };
     }

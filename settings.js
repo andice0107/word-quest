@@ -184,7 +184,26 @@ window.WQSettings = (function () {
     }
     return n + (Object.keys(taken).length + 1);
   }
+  /* 改錯字的正確字：「猾→滑」「鶯→鷹；援→緩」「距、猛」都可以 → ['滑']、['鷹','緩']、['距','猛'] */
+  var ARROW = /→|->|改成|＞|>/;
+  function correctChars(a) {
+    a = String(a || '').split(/[|｜]/)[0];
+    var parts = ARROW.test(a) ? a.split(/[；;、,，\s]+/).map(function (x) { return x.split(ARROW).pop(); }) : [a];
+    return parts.join('').match(/[\u3400-\u9fff\uf900-\ufaff]/g) || [];
+  }
+  /* 改錯字：學生只寫正確的字（一字一格），格數＝正確字數；題目裡要學生寫「錯字→正確字」的說明改掉 */
+  function fixCorrection(q) {
+    if (inputOf(q) !== 'draw' || q.kind !== 'correction' || q.refText) return q;
+    var cs = correctChars(q.answerText);
+    if (!cs.length) return q;
+    q.refText = q.answerText; q.answerText = cs.join('、'); q.cells = cs.length;
+    var note = '（依序寫出正確的字，一格寫一個字）';
+    q.prompt = String(q.prompt || '').replace(/[（(]\s*請?依?照?「?錯字\s*(→|->)\s*正確字」?\s*的?格式寫出\s*[）)]/g, '');
+    if (!/寫出正確的字/.test(q.prompt)) q.prompt = q.prompt.replace(/\s+$/, '') + note;
+    return q;
+  }
   function prepQ(q) {
+    fixCorrection(q);
     var i = inputOf(q);
     if (i === 'tf') { q.options = ['⭕ 對', '❌ 不對']; q.answer = q.answer === 1 ? 1 : 0; return q; }
     if (i !== 'choice' || !q.options || q.options.length < 2) return q;
@@ -194,7 +213,7 @@ window.WQSettings = (function () {
   }
   function norm(s) { return String(s == null ? '' : s).replace(/[\s，。、,.!！?？「」]/g, '').toLowerCase(); }
   function fillMatch(q, v) { var a = String(q.answerText || '').split(/[|｜]/).map(norm).filter(Boolean); return !!norm(v) && a.indexOf(norm(v)) >= 0; }
-  function answerShow(q) { return String(q.answerText || '').split(/[|｜]/).join(' 或 '); }
+  function answerShow(q) { return String(q.refText || q.answerText || '').split(/[|｜]/).join(' 或 '); }
   var inkP = null;
   function loadInk() {
     if (!inkP) {
@@ -205,15 +224,17 @@ window.WQSettings = (function () {
   }
   /* 田字格數（和同步出題工具 ink.js 的 defaultCells 相同規則，給不能先看答案的學生端用） */
   function cellCount(q) {
+    if (q.kind === 'correction' && correctChars(q.answerText).length) return Math.min(10, correctChars(q.answerText).length);
     if (q.cells) return Math.max(1, Math.min(10, +q.cells));
     var a = String(q.answerText || ''), han = function (t) { return (t.match(/[\u3400-\u9fff\uf900-\ufaff]/g) || []).length; };
     if (q.kind === 'hanzi') return Math.max(1, Math.min(10, (a.split(/[|｜、,，]/)[0].match(/[\u3400-\u9fff\uf900-\ufaff]|[\u3105-\u312f˙ˊˇˋ]+/g) || []).length || 1));
     if (q.kind === 'zhuyin') return Math.max(1, Math.min(10, a.trim().split(/\s+/).filter(Boolean).length || 1));
-    if (q.kind === 'correction') return Math.max(1, Math.min(10, han(a.split(/→|->|改成|＞|>/).pop()) || 1));
+    if (q.kind === 'correction') return Math.max(1, Math.min(10, correctChars(a).length || 1));
     if (q.kind === 'word') return 2;
     return 1;
   }
   function cellsOf(q, ink) {
+    if (q.kind === 'correction' && correctChars(q.answerText).length) return Math.min(10, correctChars(q.answerText).length);
     if (q.cells) return Math.max(1, Math.min(10, +q.cells));
     return ink.defaultCells({ type: q.kind || 'write', answer: q.answerText || '' });
   }
@@ -257,6 +278,6 @@ window.WQSettings = (function () {
   var REPEAT_NAMES = { none: '不接受另一趟挑戰', redraw: '從全部題目重新抽題', norepeat: '抽過的不再抽，全部抽完才是終極破關' };
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, minDraw: minDraw, maxDraw: maxDraw, defDraw: defDraw, ROOM_MAX: ROOM_MAX, saveFile: saveFile, readSave: readSave, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
-    LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
+    LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount, correctChars: correctChars, fixCorrection: fixCorrection,
     DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, HINT_PTS: HINT_PTS, hintName: hintName, charHints: charHints, hintBar: hintBar, needsTeacher: needsTeacher, heroName: heroName };
 })();
