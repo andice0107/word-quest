@@ -270,6 +270,7 @@ button:focus{outline:none} button:focus-visible{outline:3px solid var(--gold);ou
 .book-pick{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
 .book-pick span{color:#ffe9a8;font-weight:700}
 .book-pick button{font:inherit;font-size:14px;padding:5px 12px;border-radius:999px;border:1px solid rgba(232,193,90,.5);background:rgba(43,30,82,.7);color:var(--ghost);cursor:pointer}
+.book-pick a.own{font-size:14px;padding:5px 12px;border-radius:999px;border:1px dashed rgba(232,193,90,.7);color:#ffe9a8;text-decoration:none}
 .book-pick button.on{background:var(--gold);color:#2a1f4a;border-color:var(--gold);font-weight:700}
 .sn.link:hover{border-color:var(--gold);background:rgba(43,30,82,.8)}
 /* 打字、手寫作答 */

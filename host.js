@@ -1,7 +1,7 @@
 /* 多人闖關：教師大螢幕（主持端，所有計分都在這台電腦計算） */
 (function () {
   'use strict';
-  var C = WQSettings.loadContent(), SET = WQSettings.load(), ALLQ = WQSettings.total(C), TYPE = C.typeNames || {};
+  var C = WQSettings.loadContent(), SET = /[?&]def=1/.test(location.search) ? WQSettings.defaults() : WQSettings.load(), ALLQ = WQSettings.total(C), TYPE = C.typeNames || {};
   var MAX = 30, CODE = WQNet.code();
   function $(id) { return document.getElementById(id); }
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }

@@ -48,7 +48,6 @@ small{opacity:.75}
     <a class="btn" href="docs/給AI的題本設計提示詞.md" download="給AI的題本設計提示詞.md">下載給 AI 的提示詞</a>
     <a class="btn" href="samples/demo-fun.xlsx" download="非學科示範題本_午夜12點.xlsx">下載非學科示範題本（36 題）</a>
     <a class="btn" href="samples/demo-guoyu.xlsx" download="國語題本_六上國語複習09.xlsx">下載國語題本（38 題，含手寫、造句）</a>
-    <p><small>非學科示範題本的題目來自「課室大富翁」範例（腦筋急轉彎、生活常識、安全、品德）；國語題本來自「師生同步出題」範例「六上國語期中考複習題庫09」（寫國字、寫注音、改錯字、造詞、造句、選擇、是非）。兩個題本都已經內建在遊戲裡，首頁可以直接選；下載下來可以當作自己出題的範例。</small></p>
   </div>
 
   <div class="step">
@@ -69,6 +68,11 @@ small{opacity:.75}
     <h2><span class="n">3</span>開始使用</h2>
     <p><b>只在這台電腦／平板玩：</b>按「套用到這台裝置」，再回遊戲就是新題目。</p>
     <button id="apply" disabled>套用到這台裝置</button>
+    <div id="go-row" class="go-row" style="display:none">
+      <p><b>直接用自己的題本開始冒險</b>（使用預設設定：全部題目、每題不限時；想改設定請到「冒險篇章」）</p>
+      <a class="btn" id="go-solo" href="index.html#go">⚡ 單人：進入自己的題本冒險</a>
+      <a class="btn" id="go-multi" href="host.html?def=1">👥 多人：開始多人冒險（學生掃 QR code 決定角色）</a>
+    </div>
     <p style="margin-top:12px"><b>給全班用（每台裝置都要新題目）：</b>按「產生分享連結」，把連結貼到 Google Classroom 或 QR code，學生點開一次就會自動換成你的題目。</p>
     <button id="share" disabled>產生分享連結</button>
     <textarea id="link" class="hidden" readonly style="display:none"></textarea>
@@ -246,13 +250,15 @@ small{opacity:.75}
     $('apply').disabled = $('share').disabled = !pending;
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
-  $('apply').onclick = function () { localStorage.setItem(LS, JSON.stringify(pending)); showNow(); alert('已套用！回到遊戲就是新題目。'); };
+  function showGo() { $('go-row').style.display = current() !== D ? '' : 'none'; }
+  showGo();
+  $('apply').onclick = function () { localStorage.setItem(LS, JSON.stringify(pending)); showNow(); showGo(); alert('已套用！可以按下面的按鈕，直接用自己的題本開始冒險。'); };
   $('share').onclick = async function () {
     var t = await WQShare.encode(pending), url = location.href.replace(/teacher\.html.*$/, '') + 'index.html#q=' + t;
     var ta = $('link'); ta.value = url; ta.style.display = 'block'; $('copy').style.display = 'inline-block';
   };
   $('copy').onclick = function () { var ta = $('link'); ta.select(); navigator.clipboard ? navigator.clipboard.writeText(ta.value).then(function () { alert('已複製連結'); }) : document.execCommand('copy'); };
-  $('restore').onclick = function () { if (confirm('確定要把這台裝置還原成原本的題目嗎？')) { localStorage.removeItem(LS); showNow(); alert('已還原。'); } };
+  $('restore').onclick = function () { if (confirm('確定要把這台裝置還原成原本的題目嗎？')) { localStorage.removeItem(LS); showNow(); showGo(); alert('已還原。'); } };
 })();
 </script>
 </body>

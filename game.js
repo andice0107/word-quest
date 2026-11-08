@@ -136,6 +136,10 @@
     var tg = $('custom-tag'); tg.classList.remove('hidden');
     tg.textContent = (C.__custom ? '使用老師自訂題目' : '') + (ADV ? (C.__custom ? '・' : '') + '冒險篇章：抽 ' + QCOUNT + ' 題' + (SET.qTimer ? '・每題 ' + SET.qSeconds + ' 秒' : '') : '');
   }
+  if (location.hash === '#go') { /* 從換題本頁「進入自己的題本冒險」過來：直接開始 */
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    setTimeout(function () { $('btn-start').click(); }, 300);
+  }
   $('btn-speak').addEventListener('click', function () {
     if (narration) { try { narration.currentTime = 0; narration.play(); } catch (e) {} return; }
     if ('speechSynthesis' in window) { var u = new SpeechSynthesisUtterance(C.instruction || ''); u.lang = 'zh-TW'; u.rate = .95;
