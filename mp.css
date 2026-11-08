@@ -312,3 +312,6 @@ canvas.gink.small{width:220px;height:70px;display:inline-block;vertical-align:mi
 .ghosts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .ghosts span{padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px dashed rgba(232,193,90,.5);font-size:14px;opacity:.8}
 .hero .claim{position:absolute;left:4px;top:4px;font-size:12px;padding:2px 6px;border-radius:8px;border:1px solid var(--gold);background:rgba(43,30,82,.9);color:#ffe9a8}
+.cell-count{display:flex;gap:8px;align-items:center;justify-content:center;font-weight:700;flex-wrap:wrap}
+.cell-count button{border:1.5px solid rgba(232,193,90,.5);background:rgba(43,30,82,.85);color:#f6f1ff;border-radius:10px;padding:6px 14px;font-size:16px}
+.cc-n{min-width:3.2em;text-align:center;color:#ffe9a8}

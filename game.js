@@ -358,12 +358,20 @@
       WQSettings.loadInk().then(function (ink) {
         if (!cur || cur.key !== key) return;
         cur.ink = ink;
-        function build(k) { cur.n = k; cur.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function () {} }); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
-        if (q.kind === 'word' && !q.cells) {
-          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '這個詞有幾個字？'));
-          [2, 3, 4].forEach(function (k) { var b = el('button', '', k + ' 格'); b.type = 'button'; b.dataset.n = k; b.onclick = function () { if (!cur.done) build(k); }; chooser.appendChild(b); });
+        var cnt = el('b', 'cc-n', '');
+        function build(k) {
+          var old = (cur.cells || []).map(function (c) { return c.s; });
+          cur.n = k; cur.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function () {} });
+          old.forEach(function (s, i) { if (cur.cells[i] && s && s.length) cur.cells[i].setMine(s); }); // 增減格子時保留已寫的字
+          cnt.textContent = k + ' 格';
         }
-        build(WQSettings.cellsOf(q, ink));
+        if (q.kind === 'word') { /* 造詞：學生自己決定格子數，最少 2 格、最多 10 格，一格一字 */
+          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '需要幾個格子？'));
+          var mi = el('button', '', '－ 減少'); mi.type = 'button'; mi.onclick = function () { if (!cur.done && cur.n > 2) build(cur.n - 1); };
+          var pl = el('button', '', '＋ 增加'); pl.type = 'button'; pl.onclick = function () { if (!cur.done && cur.n < 10) build(cur.n + 1); };
+          chooser.appendChild(mi); chooser.appendChild(cnt); chooser.appendChild(pl);
+        }
+        build(q.kind === 'word' ? Math.max(2, Math.min(10, +q.cells || 2)) : WQSettings.cellsOf(q, ink));
       }).catch(function () { box.appendChild(el('div', 'fb-title', '手寫板載入失敗，請確認網路連線後重新打開這一題。')); });
       go.onclick = function () {
         if (!cur || cur.done || !cur.cells) return;

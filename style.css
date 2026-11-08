@@ -353,3 +353,4 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
 .pin-card input{display:block;width:100%;box-sizing:border-box;margin:8px 0;font-size:24px;letter-spacing:6px;text-align:center;padding:10px;border-radius:12px;border:2px solid #e8c15a;background:#fffaf0;color:#2a1f4a}
 .pin-err{color:#ff9e94;min-height:1.4em;margin:4px 0}
 .pin-btns{display:flex;gap:10px;justify-content:center}
+.cc-n{min-width:3.2em;text-align:center;color:#ffe9a8}

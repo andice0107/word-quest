@@ -241,12 +241,18 @@
       WQSettings.loadInk().then(function (ink) {
         if (S.qi !== qi || S.ph !== 'question') return;
         V.ink = ink;
-        function build(k) { V.n = k; V.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function (i, kind) { if (kind !== 'live') draft(); } }); draft(); chooser.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.dataset.n === k); }); }
-        if (q.kind === 'word' && !q.cells) {
-          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '幾個字？'));
-          [2, 3, 4].forEach(function (k) { var b = btn('', k + ' 格', function () { build(k); }); b.dataset.n = k; chooser.appendChild(b); });
+        var cnt = el('b', 'cc-n', '');
+        function build(k) {
+          var old = (V.cells || []).map(function (c) { return c.s; });
+          V.n = k; V.cells = ink.buildCells(cont, k, { own: 's', grid: q.kind !== 'write', onChange: function (i, kind) { if (kind !== 'live') draft(); } });
+          old.forEach(function (s, i) { if (V.cells[i] && s && s.length) V.cells[i].setMine(s); }); // 增減格子時保留已寫的字
+          cnt.textContent = k + ' 格'; draft();
         }
-        build(Math.max(1, q.cellN || q.cells || 1));
+        if (q.kind === 'word') { /* 造詞：學生自己決定格子數，最少 2 格、最多 10 格，一格一字 */
+          chooser.classList.remove('hidden'); chooser.appendChild(el('span', '', '需要幾個格子？'));
+          chooser.appendChild(btn('', '－ 減少', function () { if (V.n > 2) build(V.n - 1); })); chooser.appendChild(cnt); chooser.appendChild(btn('', '＋ 增加', function () { if (V.n < 10) build(V.n + 1); }));
+        }
+        build(q.kind === 'word' ? Math.max(2, Math.min(10, +q.cells || +q.cellN || 2)) : Math.max(1, q.cellN || q.cells || 1));
       }).catch(function () { box.appendChild(el('div', 'fb bad', '手寫板載入失敗，請確認網路後重新整理。')); });
     } else {
       V.text = el(q.input === 'fill' ? 'input' : 'textarea'); if (q.input === 'fill') V.text.type = 'text';
