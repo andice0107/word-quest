@@ -111,7 +111,41 @@ window.WQSettings = (function () {
   function perCell(q) { return inputOf(q) === 'draw' && q.kind !== 'write'; }
   /* 造句、打字作答：老師從 7 個級距點分數（50～200，每級 25 分） */
   var TEXT_LEVELS = [50, 75, 100, 125, 150, 175, 200], TEXT_MAX = 200;
-  function freePts(q, mark, n, tp) {
+  /* 寫國字題可按「部件提示」、改錯字題可按「部首意義」提示（每個字分開）：
+     沒看提示答對一字 60 分，看了這個字的提示才答對只得 30 分 */
+  var HINT_PTS = 30, HINT_NAMES = { hanzi: '部件提示', correction: '部首意義' };
+  function hintName(q) { return (inputOf(q) === 'draw' && HINT_NAMES[q && q.kind]) || ''; }
+  function charHints(q) {
+    if (!hintName(q)) return [];
+    var h = q.charHints; if (typeof h === 'string') h = h.split(/[；;]/);
+    return (h || []).map(function (x) { return String(x == null ? '' : x).trim(); });
+  }
+  function hintBar(q, n, used, onUse) {
+    var hs = charHints(q), name = hintName(q), any = false;
+    var bar = document.createElement('div'); bar.className = 'hint-bar';
+    for (var i = 0; i < n; i++) (function (i) {
+      if (!hs[i]) return; any = true;
+      var item = document.createElement('div'); item.className = 'hint-item';
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'hint-btn';
+      var tx = document.createElement('div'); tx.className = 'hint-text hidden';
+      function open() { b.classList.add('used'); b.textContent = '💡 第 ' + (i + 1) + ' 字的' + name + '（這個字答對得 ' + HINT_PTS + ' 分）'; tx.textContent = hs[i]; tx.classList.remove('hidden'); }
+      b.textContent = '💡 第 ' + (i + 1) + ' 字的' + name;
+      b.onclick = function () {
+        if (used[i]) return;
+        if (!b.classList.contains('ask')) { b.classList.add('ask'); b.textContent = '確定要看嗎？看了這個字答對只得 ' + HINT_PTS + ' 分（再按一次）'; return; }
+        b.classList.remove('ask'); used[i] = true; open(); if (onUse) onUse(i);
+      };
+      if (used[i]) open();
+      item.appendChild(b); item.appendChild(tx); bar.appendChild(item);
+    })(i);
+    return any ? bar : null;
+  }
+  function freePts(q, mark, n, tp, cm, h) {
+    if (perCell(q) && h && h.some && h.some(Boolean) && (mark === true || typeof mark === 'number')) {
+      n = Math.max(1, n || 1); var s = 0;
+      for (var i = 0; i < n; i++) if (mark === true || (cm && cm[i] === true)) s += h[i] ? HINT_PTS : CHAR_PTS;
+      return s;
+    }
     if (perCell(q)) { n = Math.max(1, n || 1); return mark === true ? CHAR_PTS * n : (typeof mark === 'number' ? CHAR_PTS * Math.round(mark * n) : 0); }
     if (inputOf(q) === 'text') return mark === false ? 0 : (+tp || (mark === true ? TEXT_MAX : 0));
     return mark === true ? WHOLE_PTS : 0;
@@ -217,5 +251,5 @@ window.WQSettings = (function () {
   return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, minDraw: minDraw, saveFile: saveFile, readSave: readSave, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
-    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, needsTeacher: needsTeacher, heroName: heroName };
+    DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, HINT_PTS: HINT_PTS, hintName: hintName, charHints: charHints, hintBar: hintBar, needsTeacher: needsTeacher, heroName: heroName };
 })();

@@ -372,10 +372,12 @@
           chooser.appendChild(mi); chooser.appendChild(cnt); chooser.appendChild(pl);
         }
         build(q.kind === 'word' ? Math.max(2, Math.min(10, +q.cells || 2)) : WQSettings.cellsOf(q, ink));
+        cur.h = []; var hb = WQSettings.hintBar(q, cur.n, cur.h, function () { play('open'); });
+        if (hb) box.insertBefore(hb, wrap.nextSibling);
       }).catch(function () { box.appendChild(el('div', 'fb-title', '手寫板載入失敗，請確認網路連線後重新打開這一題。')); });
       go.onclick = function () {
         if (!cur || cur.done || !cur.cells) return;
-        var v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }) };
+        var v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }), h: (cur.h || []).slice() };
         if (!cur.ink.hasInk(v)) return feedback('hint', '還沒寫答案', '先在格子裡寫好再送出喔。');
         judgeFree(o, q, v);
       };
@@ -416,7 +418,7 @@
     play('open'); updGrade();
     var ref = WQSettings.answerShow(q);
     feedback('hint', (auto ? '時間到，已自動交出你寫的答案。' : '') + '📝 答案已交給老師批改',
-      (WQSettings.perCell(q) ? '老師會一個字一個字批改，每寫對一個字加 ' + WQSettings.CHAR_PTS + ' 分。' : (WQSettings.inputOf(q) === 'text' ? '老師會依內容給 50～200 分。' : '老師批改答對後，會再加 100 分。')) + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
+      (WQSettings.perCell(q) ? '老師會一個字一個字批改，每寫對一個字加 ' + WQSettings.CHAR_PTS + ' 分' + (v && v.h && v.h.some(Boolean) ? '（看了提示的字答對加 ' + WQSettings.HINT_PTS + ' 分）' : '') + '。' : (WQSettings.inputOf(q) === 'text' ? '老師會依內容給 50～200 分。' : '老師批改答對後，會再加 100 分。')) + (ref ? '參考答案：' + ref + '。' : '') + (q.explain ? '　' + q.explain : ''), o.clue);
     finishQ(o);
   }
 
@@ -441,7 +443,7 @@
       }
       var bs = el('div', 'gbtns'), per = WQSettings.perCell(q) && typeof it.v !== 'string', n = per ? Math.max(1, it.v.n || 1) : 1;
       function done(mark, tp) {
-        it.mark = mark; var pts = WQSettings.freePts(q, mark, n, tp); it.pts = pts;
+        it.mark = mark; var pts = WQSettings.freePts(q, mark, n, tp, it.cm, it.v && it.v.h); it.pts = pts;
         if (mark === true) S.firstTry++; else { S.revealed++; S.review.push(it.o.word); }
         if (pts) addScore(pts); play(pts ? 'correct' : 'wrong'); afterGrade();
       }
@@ -449,7 +451,7 @@
         it.cm = it.cm || [];
         var row = el('div', 'cell-marks');
         for (var ci = 0; ci < n; ci++) (function (ci) {
-          var c = el('div', 'cm'); c.appendChild(el('span', 'cm-n', '第 ' + (ci + 1) + ' 字'));
+          var c = el('div', 'cm'), hu = it.v && it.v.h && it.v.h[ci]; c.appendChild(el('span', 'cm-n', '第 ' + (ci + 1) + ' 字' + (hu ? '💡' : '')));
           [[true, '✓'], [false, '✗']].forEach(function (pr) {
             var b = el('button', it.cm[ci] === pr[0] ? 'on' : '', pr[1]); b.type = 'button';
             b.onclick = function () { it.cm[ci] = pr[0]; var arr = []; for (var x = 0; x < n; x++) arr.push(it.cm[x]); var m = WQSettings.markFromCells(arr); if (m === undefined) openGrade(); else done(m); };
@@ -457,7 +459,7 @@
           });
           row.appendChild(c);
         })(ci);
-        bs.appendChild(row); bs.appendChild(el('span', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分，每個字都批改後計分'));
+        bs.appendChild(row); bs.appendChild(el('span', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分，每個字都批改後計分' + (it.v && it.v.h && it.v.h.some(Boolean) ? '；有 💡 的字是看了提示，答對得 ' + WQSettings.HINT_PTS + ' 分' : '')));
       } else if (it.mark === null && WQSettings.inputOf(q) === 'text') {
         var lv = el('div', 'cell-marks levels');
         var z = el('button', '', '✘ 0'); z.type = 'button'; z.onclick = function () { done(false, 0); }; lv.appendChild(z);
@@ -502,7 +504,7 @@
     if (ch && cur.sel != null) { var sk = cur.sel; cur.sel = null; answer(sk, $('m-body').querySelector('.opt[data-k="' + sk + '"]')); if (cur && !cur.done) return timeUp(); return; }
     if (WQSettings.needsTeacher(q)) {
       var v = null;
-      if (cur.cells && cur.ink) { v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }) }; if (!cur.ink.hasInk(v)) v = null; }
+      if (cur.cells && cur.ink) { v = { n: cur.n, c: cur.cells.map(function (c) { return { s: c.s }; }), h: (cur.h || []).slice() }; if (!cur.ink.hasInk(v)) v = null; }
       else { var t = $('free-text'); if (t && t.value.trim()) v = t.value.trim(); }
       if (v) return judgeFree(o, q, v, true);
     }

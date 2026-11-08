@@ -354,3 +354,11 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
 .pin-err{color:#ff9e94;min-height:1.4em;margin:4px 0}
 .pin-btns{display:flex;gap:10px;justify-content:center}
 .cc-n{min-width:3.2em;text-align:center;color:#ffe9a8}
+/* 部件提示／部首意義提示 */
+.hint-bar{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.hint-item{display:flex;flex-direction:column;gap:4px}
+.hint-btn{align-self:flex-start;font:inherit;font-size:15px;padding:7px 12px;border-radius:10px;border:1.5px solid rgba(242,140,40,.7);background:rgba(242,140,40,.14);color:#ffcf96;cursor:pointer}
+.hint-btn.ask{background:rgba(242,140,40,.35);color:#fff}
+.hint-btn.used{cursor:default;opacity:.85}
+.hint-text{font-size:17px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.08);color:#fff3df}
+.hint-text.hidden{display:none}

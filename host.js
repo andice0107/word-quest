@@ -50,7 +50,7 @@
     var it = G.seq[G.qi], q = null, ps = list(), rk = ranked();
     if (it && (G.phase === 'question' || G.phase === 'reveal' || G.phase === 'grade')) {
       var Q = it.o.q, rv = G.phase === 'reveal';
-      q = { input: WQSettings.inputOf(Q), kind: Q.kind || '', cells: Q.cells || 0, label: WQSettings.inputLabel(Q), answerText: rv ? Q.answerText || '' : '', cellN: WQSettings.inputOf(Q) === 'draw' ? WQSettings.cellCount(Q) : 0,
+      q = { input: WQSettings.inputOf(Q), kind: Q.kind || '', cells: Q.cells || 0, label: WQSettings.inputLabel(Q), answerText: rv ? Q.answerText || '' : '', cellN: WQSettings.inputOf(Q) === 'draw' ? WQSettings.cellCount(Q) : 0, ch: WQSettings.charHints(Q),
         prompt: Q.prompt, options: Q.options || [], speaker: Q.speaker || it.o.name, type: TYPE[Q.type] || Q.type || '', hint1: Q.hint1, hint2: Q.hint2,
         answer: G.phase === 'reveal' ? Q.answer : -1, explain: G.phase === 'reveal' ? Q.explain : '', word: G.phase === 'reveal' ? it.o.word : '', clue: G.phase === 'reveal' ? it.o.clue : '' };
     }
@@ -61,7 +61,7 @@
       untilCards: SET.cardEvery - ((G.qi + 1) % SET.cardEvery), cardEvery: SET.cardEvery, maxP: MAX,
       players: ps.map(function (p) {
         return { pid: p.pid, name: p.name, sid: p.sid || '', sidR: p.sid ? 0 : Math.max(0, p.sidUntil - Date.now()), g: p.gender, seed: p.seed, score: p.score, rank: rk.indexOf(p) + 1, cards: p.cards, next: Object.keys(p.next || {}),
-          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined, cr: p.cur.cr, ct: p.cur.ct, cm: G.phase === 'reveal' ? p.cur.cm : undefined } : null,
+          cur: p.cur ? { t: p.cur.tries, d: p.cur.done, c: p.cur.correct, pts: p.cur.pts, b: p.cur.bonus, sp: p.cur.sp, rm: p.cur.removed, sk: p.cur.skip, fz: p.cur.frozen, sc: p.cur.second, sb: !!p.cur.sub, mk: G.phase === 'reveal' ? p.cur.mark : undefined, cr: p.cur.cr, ct: p.cur.ct, cm: G.phase === 'reveal' ? p.cur.cm : undefined, hu: p.cur.hu } : null,
           delta: p.delta || 0, rd: p.rankDelta || 0, correct: p.correct, wrong: p.wrong, streak: p.streak, on: online(p) };
       }),
       merchant: G.merchant ? { stock: G.merchant.stock, done: Object.keys(G.merchant.done) } : null,
@@ -103,6 +103,7 @@
     if (d.t === 'ans') answer(p, +d.k, +d.qi);
     else if (d.t === 'sub') submitFree(p, d.v, +d.qi);
     else if (d.t === 'draft') draftFree(p, d.v, +d.qi);
+    else if (d.t === 'hint') useHint(p, +d.i, +d.qi);
     else if (d.t === 'buy') buy(p, d.card);
     else if (d.t === 'tradeDone') { if (G.merchant) { G.merchant.done[p.pid] = 1; G.merchant.feed.push(p.name + ' 完成交易'); renderMerchantFeed(); push(); checkMerchantDone(); } }
     else if (d.t === 'use') useCard(p, d.card, d.target);
@@ -326,6 +327,12 @@
     fx(p.pid, 'good', '已送出！時間結束前還可以修改再送出。');
     updateStrip($('strip')); monTile(p); push(); checkAllDone();
   }
+  /* 學生按了某個字的部件提示／部首意義提示：記下來，這個字答對只得 30 分 */
+  function useHint(p, i, qi) {
+    var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
+    if (G.phase !== 'question' || qi !== G.qi || !p.cur || !Q || !WQSettings.charHints(Q)[i]) return;
+    p.cur.hu = (p.cur.hu || []).slice(); p.cur.hu[i] = true; monTile(p); push();
+  }
   /* 學生作答中的草稿（給老師的全班監控版看，不算送出） */
   function draftFree(p, v, qi) {
     var Q = G.seq[G.qi] && G.seq[G.qi].o.q;
@@ -348,6 +355,7 @@
   }
   /* ---------- 學生作答格（監控版與批改共用，照同步出題工具：預設遮住，可全開／全關，點一下開關單人） ---------- */
   function isMasked(p) { return G.ov && (p.pid in G.ov) ? !G.ov[p.pid] : G.mask !== false; }
+  function hasHu(c) { return !!(c && c.hu && c.hu.some(Boolean)); }
   function nCells(c) { return c && c.sub && c.sub.v && c.sub.v.n ? c.sub.v.n : 1; }
   function setCells(c, Q, v) {
     var n = nCells(c), cm = c.cm || [];
@@ -374,14 +382,14 @@
       if (WQSettings.perCell(Q) && typeof c.sub.v !== 'string') {
         var n = nCells(c), cm = c.cm || [], row = el('div', 'cell-marks');
         for (var i = 0; i < n; i++) (function (i) {
-          var d = el('div', 'cm'); d.appendChild(el('span', 'cm-n', String(i + 1)));
+          var d = el('div', 'cm'); d.appendChild(el('span', 'cm-n', String(i + 1) + (c.hu && c.hu[i] ? '💡' : '')));
           d.appendChild(btn('gok' + (cm[i] === true ? ' on' : ''), '✓', function () { var a = (c.cm || []).slice(); a[i] = true; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); redraw(); }));
           d.appendChild(btn('gng' + (cm[i] === false ? ' on' : ''), '✗', function () { var a = (c.cm || []).slice(); a[i] = false; c.cm = a; c.mark = WQSettings.markFromCells(a, nCells(c)); redraw(); }));
           row.appendChild(d);
         })(i);
         ab.appendChild(row);
         var right = cm.filter(function (x) { return x === true; }).length;
-        ab.appendChild(el('span', 'cm-sum', c.mark === undefined ? '每個字都批改後計分' : '對 ' + right + ' / ' + n + ' 字・' + WQSettings.freePts(Q, c.mark, n) + ' 分'));
+        ab.appendChild(el('span', 'cm-sum', c.mark === undefined ? '每個字都批改後計分' + (hasHu(c) ? '（💡＝看了提示，答對 ' + WQSettings.HINT_PTS + ' 分）' : '') : '對 ' + right + ' / ' + n + ' 字・' + WQSettings.freePts(Q, c.mark, n, 0, c.cm, c.hu) + ' 分'));
       } else if (WQSettings.inputOf(Q) === 'text') {
         var lv = el('div', 'levels');
         lv.appendChild(btn('gng' + (c.mark === false ? ' on' : ''), '✘ 0', function () { c.tp = 0; c.mark = false; redraw(); }));
@@ -481,7 +489,7 @@
       okList.forEach(function (p) {
         var c = p.cur, n = nCells(c), all = c.mark === true;
         c.correct = all; c.ct = WQSettings.perCell(Q) && typeof c.sub.v !== 'string' ? n : 0; c.cr = c.ct ? (c.cm || []).filter(function (x) { return x === true; }).length : 0;
-        c.pts = WQSettings.freePts(Q, c.mark, n, c.tp) * (c.lucky ? 2 : 1);
+        c.pts = WQSettings.freePts(Q, c.mark, n, c.tp, c.cm, c.hu) * (c.lucky ? 2 : 1);
         if (all) { G.q.order.push(p.pid); c.sp = G.q.order.length; c.bonus = [30, 20, 10][c.sp - 1] || 0; }
         p.score += c.pts + (c.bonus || 0);
       });

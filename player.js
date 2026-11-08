@@ -253,6 +253,8 @@
           chooser.appendChild(btn('', '－ 減少', function () { if (V.n > 2) build(V.n - 1); })); chooser.appendChild(cnt); chooser.appendChild(btn('', '＋ 增加', function () { if (V.n < 10) build(V.n + 1); }));
         }
         build(q.kind === 'word' ? Math.max(2, Math.min(10, +q.cells || +q.cellN || 2)) : Math.max(1, q.cellN || q.cells || 1));
+        var used = ((mine.cur || {}).hu || []).slice(), hb = WQSettings.hintBar(q.ch ? { input: 'draw', kind: q.kind, charHints: q.ch } : q, V.n, used, function (i) { send('hint', { qi: qi, i: i }); WQSfx.play('tap'); });
+        if (hb) box.insertBefore(hb, wrap.nextSibling);
       }).catch(function () { box.appendChild(el('div', 'fb bad', '手寫板載入失敗，請確認網路後重新整理。')); });
     } else {
       V.text = el(q.input === 'fill' ? 'input' : 'textarea'); if (q.input === 'fill') V.text.type = 'text';
@@ -304,7 +306,7 @@
     var cu = mine.cur || {}, q = S.q;
     if (!WQSettings.isChoice(q)) {
       c.appendChild(el('div', 'big-res', cu.c ? '✔ 老師批改：答對！' : (cu.cr ? '◐ 老師批改：答對 ' + cu.cr + ' / ' + cu.ct + ' 個字' : '✘ 這題沒答對')));
-      if (cu.ct) c.appendChild(el('p', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分' + (cu.cm ? '：' + cu.cm.map(function (x, i) { return '第 ' + (i + 1) + ' 字' + (x ? '✓' : '✗'); }).join('　') : '')));
+      if (cu.ct) c.appendChild(el('p', 'mute', '一個字 ' + WQSettings.CHAR_PTS + ' 分' + (cu.cm ? '：' + cu.cm.map(function (x, i) { return '第 ' + (i + 1) + ' 字' + (x ? '✓' : '✗') + (cu.hu && cu.hu[i] ? '💡' : ''); }).join('　') + (cu.hu && cu.hu.some(Boolean) ? '（💡 看了提示的字答對得 ' + WQSettings.HINT_PTS + ' 分）' : '') : '')));
       if (cu.pts || cu.b) c.appendChild(el('p', 'gold', '本題得分 +' + (cu.pts || 0) + (cu.b ? '，速度加分 +' + cu.b + '（第 ' + cu.sp + ' 位答對）' : '')));
       var md = el('div', 'model'); md.appendChild(el('b', '', '參考答案：')); md.appendChild(el('span', 'kai', String(q.answerText || '（老師判斷）').split(/[|｜]/).join(' 或 '))); c.appendChild(md);
       showMine(c, q, true);

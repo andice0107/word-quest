@@ -53,7 +53,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "奪",
-            "speaker": "老工匠畫像"
+            "speaker": "老工匠畫像",
+            "charHints": [
+              "上面是「大」，中間是「隹」，下面是「寸」"
+            ]
           },
           "clue": "畫框背面的殘頁：「蝙蝠一定在明月之後才出現。」"
         },
@@ -74,7 +77,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "偏",
-            "speaker": "魔鏡"
+            "speaker": "魔鏡",
+            "charHints": [
+              "左邊是「亻」，右邊是「扁」"
+            ]
           },
           "clue": "鏡面浮出霧字：「南瓜燈緊跟在蝙蝠之後亮起。」"
         },
@@ -248,7 +254,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "瓦",
-            "speaker": "金幣山"
+            "speaker": "金幣山",
+            "charHints": [
+              "獨體字，就是「瓶」「瓷」裡面的那個部件"
+            ]
           },
           "clue": "金幣袋上的標籤：「伯爵共有八個金幣袋。密碼的第一個數字，就是金幣袋的數目。」"
         },
@@ -269,7 +278,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "預",
-            "speaker": "黑貓"
+            "speaker": "黑貓",
+            "charHints": [
+              "左邊是「予」，右邊是「頁」"
+            ]
           },
           "clue": "鎖頭上的刻痕：「第二個數字，是第一個數字的一半。」"
         },
@@ -312,7 +324,11 @@ window.DEMO_GUOYU = {
             "kind": "correction",
             "answerText": "距、猛",
             "cells": 2,
-            "speaker": "黑貓"
+            "speaker": "黑貓",
+            "charHints": [
+              "和腳、走路、步伐有關",
+              "和狗、狼這一類的動物有關"
+            ]
           },
           "clue": "管家的密信：「伯爵的黃金密碼鎖，只有三個數字。」"
         },
@@ -421,7 +437,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "傲",
-            "speaker": "水晶球"
+            "speaker": "水晶球",
+            "charHints": [
+              "左邊是「亻」，右邊是「敖」（土＋方＋攵）"
+            ]
           },
           "clue": "水晶球底座寫著：「真正的樓梯，不是紅色的。」"
         },
@@ -442,7 +461,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "卓",
-            "speaker": "魔法師霍爾"
+            "speaker": "魔法師霍爾",
+            "charHints": [
+              "上面是「卜」，下面是「早」"
+            ]
           },
           "clue": "鏡子背面：「真正的樓梯上，畫著星星。」"
         },
@@ -485,7 +507,11 @@ window.DEMO_GUOYU = {
             "kind": "correction",
             "answerText": "綢、繆",
             "cells": 2,
-            "speaker": "黑貓"
+            "speaker": "黑貓",
+            "charHints": [
+              "和細線、布料、織品有關",
+              "和細線、纏繞、編織有關"
+            ]
           },
           "clue": "沙漏上刻著：「有星星的樓梯之中，藍色那座是陷阱。」"
         },
@@ -590,7 +616,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "稠",
-            "speaker": "小幽靈"
+            "speaker": "小幽靈",
+            "charHints": [
+              "左邊是「禾」，右邊是「周」"
+            ]
           },
           "clue": "小幽靈小聲說：「白色燈籠要最先點亮。」"
         },
@@ -611,7 +640,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "乳",
-            "speaker": "南瓜湯老闆"
+            "speaker": "南瓜湯老闆",
+            "charHints": [
+              "左邊是「孚」（爫＋子），右邊是「乚」"
+            ]
           },
           "clue": "老闆指著招牌說：「綠色燈籠緊接在白色燈籠之後。」"
         },
@@ -654,7 +686,10 @@ window.DEMO_GUOYU = {
             "kind": "correction",
             "answerText": "攪",
             "cells": 1,
-            "speaker": "黑貓"
+            "speaker": "黑貓",
+            "charHints": [
+              "和抓、拿、推、轉動這些動作有關"
+            ]
           },
           "clue": "薑茶壺上的紙條：「美食街的燈籠一共四盞：白、綠、橘、紫。」"
         },
@@ -767,7 +802,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "晒",
-            "speaker": "黑貓"
+            "speaker": "黑貓",
+            "charHints": [
+              "左邊是「日」，右邊是「西」"
+            ]
           },
           "clue": "大鍋邊緣刻著：「密碼的順序是：蝙蝠翅膀、南瓜籽、月光露。」"
         },
@@ -788,7 +826,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "陶",
-            "speaker": "藥水瓶"
+            "speaker": "藥水瓶",
+            "charHints": [
+              "左邊是「阝」，右邊是「匋」（勹＋缶）"
+            ]
           },
           "clue": "藥瓶標籤：「蝙蝠翅膀放三份。」"
         },
@@ -831,7 +872,10 @@ window.DEMO_GUOYU = {
             "kind": "correction",
             "answerText": "靡",
             "cells": 1,
-            "speaker": "女巫"
+            "speaker": "女巫",
+            "charHints": [
+              "和「不是、相反、違背」的意思有關"
+            ]
           },
           "clue": "食譜最後一行：「三種材料加起來，一共十二份。」"
         },
@@ -915,7 +959,10 @@ window.DEMO_GUOYU = {
             "input": "draw",
             "kind": "hanzi",
             "answerText": "撫",
-            "speaker": "大鐘"
+            "speaker": "大鐘",
+            "charHints": [
+              "左邊是「扌」，右邊是「無」"
+            ]
           },
           "clue": "齒輪上刻著：「水晶鈴第一個響起。」"
         },

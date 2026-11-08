@@ -44,7 +44,7 @@ small{opacity:.75}
   <div class="step">
     <h2><span class="n">0</span>請 AI 幫你出題本（選用）</h2>
     <p>下載「給 AI 的題本設計提示詞」，整段貼給 AI（Claude、ChatGPT、Gemini 都可以），再附上你的教材或題庫。AI 會先提出冒險主題讓你選，再生成可以直接上傳的 Excel 題本。</p>
-    <p><small>國語題本可以有手寫（寫國字、寫注音、改錯字、造詞，答案由老師判斷）和打字（填充、造句）；其他學科以是非題、選擇題為主。</small></p>
+    <p><small>國語題本可以有手寫（寫國字、寫注音、改錯字、造詞，答案由老師判斷）和打字（5 個字以上的填充、造句）；寫國字有部件提示、改錯字有部首意義提示（看了提示的字答對得 30 分）；其他學科以是非題、選擇題為主。</small></p>
     <a class="btn" href="docs/給AI的題本設計提示詞.md" download="給AI的題本設計提示詞.md">下載給 AI 的提示詞</a>
     <a class="btn" href="samples/demo-fun.xlsx" download="非學科示範題本_午夜12點.xlsx">下載非學科示範題本（36 題）</a>
     <a class="btn" href="samples/demo-guoyu.xlsx" download="國語題本_六上國語複習09.xlsx">下載國語題本（38 題，含手寫、造句）</a>
@@ -88,6 +88,7 @@ small{opacity:.75}
 <script src="share.js"></script>
 <script src="content.js"></script>
 <script src="content-guoyu.js"></script>
+<script src="radicals.js"></script>
 <script>
 (function () {
   var LS = 'wordQuestCustomContent', D = (function () { try { if (localStorage.getItem('wordQuestDemo') === 'guoyu' && window.DEMO_GUOYU) return window.DEMO_GUOYU; } catch (e) {} return window.DEFAULT_CONTENT; })(), pending = null;
@@ -100,7 +101,7 @@ small{opacity:.75}
   var SPRITE_ZH = { portrait: '畫像', mirror: '魔鏡', pumpkin: '南瓜燈', book: '書', chest: '寶箱', scroll: '卷軸', coins: '金幣', potion: '藥水', crystal: '水晶球', candle: '燭臺', hourglass: '沙漏', cauldron: '大鍋', lantern: '燈籠', ghost: '幽靈', raven: '烏鴉', clock: '大鐘', wizard: '南瓜巫師', cat: '黑貓' };
   var ZH_SPRITE = {}; Object.keys(SPRITE_ZH).forEach(function (k) { ZH_SPRITE[SPRITE_ZH[k]] = k; ZH_SPRITE[k] = k; });
   var PT = { sequence: '順序', code: '密碼', choose: '選擇' }, TP = { '順序': 'sequence', '密碼': 'code', '選擇': 'choose', sequence: 'sequence', code: 'code', choose: 'choose' };
-  var Q_HEAD = ['關卡(1-6)', '物品名稱', '圖示', '語詞', '題型代號', '說話的角色', '題目', '選項1', '選項2', '選項3', '選項4', '正確答案(1-4)', '提示1(答錯一次)', '提示2(答錯兩次)', '解釋與例句', '答對得到的線索', '出現條件(本關答對幾題後才出現)', '作答方式', '參考答案(非選擇題)', '田字格數(可空白)'];
+  var Q_HEAD = ['關卡(1-6)', '物品名稱', '圖示', '語詞', '題型代號', '說話的角色', '題目', '選項1', '選項2', '選項3', '選項4', '正確答案(1-4)', '提示1(答錯一次)', '提示2(答錯兩次)', '解釋與例句', '答對得到的線索', '出現條件(本關答對幾題後才出現)', '作答方式', '參考答案(非選擇題)', '田字格數(可空白)', '字的提示(寫國字填部件、改錯字填部首意義；每個字一個，用；分隔)'];
   var MODE_OUT = { choice: '選擇', tf: '是非', fill: '填充', text: '打字作答', hanzi: '寫國字', zhuyin: '寫注音', correction: '改錯字', word: '造詞', write: '手寫作答' };
   var MODE_IN = { '': ['choice'], '選擇': ['choice'], '選擇題': ['choice'], '是非': ['tf'], '是非題': ['tf'], '填充': ['fill'], '填充題': ['fill'], '填答': ['fill'],
     '造句': ['text'], '照樣造句': ['text'], '短語造句': ['text'], '句型造句': ['text'], '打字': ['text'], '打字作答': ['text'], '作文': ['text'], '打字造詞': ['text'],
@@ -129,14 +130,17 @@ small{opacity:.75}
       ['   造句、打字作答：學生打字；寫國字、寫注音、改錯字、造詞、手寫作答：學生在田字格手寫。這些題目一律由老師批改對錯（多人模式在老師大螢幕批改，作答中可開「全班作答監控」；單人模式由老師按「老師批改」按鈕批改）。田字格題一字一格、一字 60 分，每個字分開批改；手寫作答整題 100 分；造句、打字作答由老師從 50～200 分（7 個級距）點選。所有題目都要按「送出答案」才算，送出前可以改。在冒險篇章開啟「每題作答時限」時，所有題型都會倒數，其中：寫國字、寫注音 60 秒；造詞、改錯字、手寫作答 100 秒；造句、打字作答 3 分鐘；關閉時所有題型都不倒數。'],
       ['   寫國字的參考答案填正確的字（例如 朋友）；改錯字填「錯→正」（例如 在→再）；寫注音填注音，每個字用空格隔開。'],
       ['   「田字格數」通常空白，工具會依參考答案自動決定；造詞的學生可以自己按「＋增加／－減少」調整格子（最少 2 格、最多 10 格），這裡填的是一開始的格數，空白就是 2 格。'],
+      ['   填充題如果是要學生「寫出國字或注音」：答案是 1～4 個字的國字或注音，上傳時會自動改成手寫（寫國字／寫注音），題目裡要附上目標字、語詞的注音（寫國字）或國字（寫注音）；5 個字以上（含 5 個字）的答案才保留打字。'],
+      ['   「字的提示」：寫國字填每個字的部件提示（例如 奪：大＋隹＋寸），改錯字填每個正確字的部首意義（例如 距：和腳、走路有關）；每個字一個，用；分隔，依字的順序。學生按「💡 提示」看了某個字的提示，那個字答對只得 30 分（沒看提示答對 60 分），每個字分開計分。'],
+      ['   部首意義提示絕對不能寫出部首本身或它的變形、俗稱（例如「水部」「三點水」「和水有關」都不行，要寫「和液體、河流有關」）。上傳時工具會自動檢查，說出部首的提示會被拿掉。'],
       ['10. 改好後存檔，回到老師設定頁面上傳。']];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(help), '說明');
     var q = [Q_HEAD];
     c.rooms.forEach(function (r, i) { r.objects.forEach(function (o) {
       var op = o.q.options; q.push([i + 1, o.name, SPRITE_ZH[o.sprite] || o.sprite, o.word, o.q.type, o.q.speaker, o.q.prompt, op[0] || '', op[1] || '', op[2] || '', op[3] || '', (o.q.input && o.q.input !== 'choice' && o.q.input !== 'tf') ? '' : o.q.answer + 1, o.q.hint1, o.q.hint2, o.q.explain, o.clue, o.unlock || 0,
-        MODE_OUT[o.q.input === 'draw' ? o.q.kind : (o.q.input || 'choice')] || '選擇', o.q.answerText || '', o.q.cells || '']);
+        MODE_OUT[o.q.input === 'draw' ? o.q.kind : (o.q.input || 'choice')] || '選擇', o.q.answerText || '', o.q.cells || '', (o.q.charHints || []).join('；')]);
     }); });
-    var ws = XLSX.utils.aoa_to_sheet(q); ws['!cols'] = [6, 16, 8, 12, 6, 12, 60, 18, 18, 18, 18, 8, 30, 30, 50, 40, 10, 10, 24, 8].map(function (w) { return { wch: w }; });
+    var ws = XLSX.utils.aoa_to_sheet(q); ws['!cols'] = [6, 16, 8, 12, 6, 12, 60, 18, 18, 18, 18, 8, 30, 30, 50, 40, 10, 10, 24, 8, 50].map(function (w) { return { wch: w }; });
     XLSX.utils.book_append_sheet(wb, ws, '題目');
     var rr = [R_HEAD];
     c.rooms.forEach(function (r, i) { var p = r.puzzle;
@@ -225,7 +229,8 @@ small{opacity:.75}
       var word = str(r[3]) || (mode[0] === 'choice' ? opts[ans] : ansText.split(/[|｜]/)[0]) || '';
       c.rooms[n - 1].objects.push({ name: str(r[1]) || word, sprite: sp, tint: 0, unlock: parseInt(r[16], 10) || 0, word: word,
         q: (function () { var qq = { type: str(r[4]).toUpperCase(), speaker: str(r[5]) || str(r[1]), prompt: str(r[6]), options: mode[0] === 'choice' || mode[0] === 'tf' ? opts : [], answer: mode[0] === 'choice' || mode[0] === 'tf' ? ans : -1, hint1: str(r[12]), hint2: str(r[13]), explain: str(r[14]) };
-          if (mode[0] !== 'choice') qq.input = mode[0]; if (mode[1]) qq.kind = mode[1]; if (ansText) qq.answerText = ansText; if (cells) qq.cells = cells; return qq; })(),
+          if (mode[0] !== 'choice') qq.input = mode[0]; if (mode[1]) qq.kind = mode[1]; if (ansText) qq.answerText = ansText; if (cells) qq.cells = cells;
+          fixFill(qq, line, warns); hintsOf(qq, str(r[20]), line, warns); return qq; })(),
         clue: str(r[15]) });
     });
     c.rooms = c.rooms.filter(Boolean);
@@ -238,6 +243,36 @@ small{opacity:.75}
       var seen = {}; rm.objects.forEach(function (o) { var t = o.tint; while (seen[o.sprite + t]) t += 70; o.tint = t % 360; seen[o.sprite + o.tint] = 1; });
     });
     return { content: c, errs: errs, warns: warns };
+  }
+  /* 填充題要學生寫國字或注音（1～4 個字）→ 一律改成手寫；5 個字以上才保留打字 */
+  var HAN = /[\u3400-\u9fff\uf900-\ufaff]/g, ZY = /[\u3105-\u312f]/;
+  function hanOf(t) { return String(t || '').match(HAN) || []; }
+  function fixFill(q, line, warns) {
+    if (q.input === 'fill' && q.answerText) {
+      var a = q.answerText.split(/[|｜]/)[0].trim(), hs = hanOf(a);
+      if (hs.length && hs.length <= 4 && hs.join('') === a.replace(/\s+/g, '')) { q.input = 'draw'; q.kind = 'hanzi'; warns.push(line + '：填充題答案是 ' + hs.length + ' 個國字，已改成手寫「寫國字」（5 個字以上才用打字）'); }
+      else if (ZY.test(a) && !hs.length && a.trim().split(/\s+/).length <= 4) { q.input = 'draw'; q.kind = 'zhuyin'; warns.push(line + '：填充題答案是注音，已改成手寫「寫注音」'); }
+    }
+    if (q.input === 'draw' && q.kind === 'hanzi' && !ZY.test(q.prompt)) warns.push(line + '：寫國字題的題目裡要附上目標字、語詞的注音（例如：爭「ㄉㄨㄛˊ」）');
+  }
+  /* 每個字的提示：寫國字＝部件提示、改錯字＝部首意義；檢查有沒有洩漏答案或部首 */
+  function radOf(ch) { var by = (window.WQ_RAD || {}).by || {}; for (var r in by) if (by[r].indexOf(ch) >= 0) return r; return ''; }
+  function hintsOf(q, raw, line, warns) {
+    var hs = raw.split(/[;；\n]/).map(function (x) { return x.trim(); });
+    while (hs.length && !hs[hs.length - 1]) hs.pop();
+    if (!hs.length) return;
+    if (q.input !== 'draw' || (q.kind !== 'hanzi' && q.kind !== 'correction')) { warns.push(line + '：只有寫國字、改錯字題可以有「字的提示」，這題的提示不會出現'); return; }
+    var a = q.answerText || '', tg = q.kind === 'correction' ? hanOf(a.split(/→|->|改成|＞|>/).pop()) : hanOf(a.split(/[|｜、,，]/)[0]);
+    if (tg.length && hs.length > tg.length) warns.push(line + '：提示有 ' + hs.length + ' 個，但答案只有 ' + tg.length + ' 個字，多的提示不會出現');
+    hs = hs.slice(0, tg.length || hs.length);
+    hs.forEach(function (h, i) {
+      var t = tg[i]; if (!h || !t) return;
+      if (h.indexOf(t) >= 0) { hs[i] = ''; warns.push(line + '：第 ' + (i + 1) + ' 字的提示直接寫出了答案「' + t + '」，已自動拿掉，請改寫'); return; }
+      if (q.kind !== 'correction') return;
+      var r = radOf(t), bad = r ? ((window.WQ_RAD.names || {})[r] || [r]) : [], hit = bad.filter(function (b) { return h.indexOf(b) >= 0; })[0];
+      if (hit) { hs[i] = ''; warns.push(line + '：第 ' + (i + 1) + ' 字「' + t + '」的部首意義提示含有「' + hit + '」，等於說出部首（' + r + '部），已自動拿掉；請改寫成不含部首的說法'); }
+    });
+    if (hs.some(Boolean)) q.charHints = hs;
   }
   function report(r) {
     var c = r.content, h = '';
