@@ -43,7 +43,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "老工匠畫像",
-            "prompt": "老工匠的畫像眨眨眼考你：哪一位公主的馬車最不怕刮傷？",
+            "prompt": "哪一位公主的馬車最不怕刮傷？",
             "options": [
               "白雪公主",
               "睡美人",
@@ -66,7 +66,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "魔鏡",
-            "prompt": "魔鏡得意地說：如果有一輛馬車，司機是王子，乘客是公主，請問這輛車是誰的？",
+            "prompt": "如果有一輛馬車，司機是王子，乘客是公主，請問這輛車是誰的？",
             "options": [
               "王子的",
               "公主的老爸的",
@@ -89,7 +89,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "貴婦人畫像",
-            "prompt": "貴婦人的畫像嘆了口氣：樹上有10隻鳥，獵人開槍打死1隻，樹上還剩幾隻鳥？",
+            "prompt": "樹上有10隻鳥，獵人開槍打死1隻，樹上還剩幾隻鳥？",
             "options": [
               "9隻",
               "10隻",
@@ -112,7 +112,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "南瓜燈",
-            "prompt": "畫中南瓜燈咯咯笑著問：什麼情況下一個人會有四隻眼睛？",
+            "prompt": "什麼情況下一個人會有四隻眼睛？",
             "options": [
               "生病時",
               "兩個人的時候",
@@ -135,7 +135,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "畫家日記",
-            "prompt": "畫家的日記上寫著：什麼東西越洗越髒，不洗反而乾淨？",
+            "prompt": "什麼東西越洗越髒，不洗反而乾淨？",
             "options": [
               "衣服",
               "毛巾",
@@ -158,7 +158,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "黑貓",
-            "prompt": "吵架的大臣畫像同時大喊：哪一個月有28天？",
+            "prompt": "哪一個月有28天？",
             "options": [
               "只有二月",
               "每個月都有",
@@ -228,7 +228,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "金幣山",
-            "prompt": "金幣山發出叮叮噹噹的聲音：什麼水放在口袋裡不會濕？",
+            "prompt": "什麼水放在口袋裡不會濕？",
             "options": [
               "雨水",
               "薪水",
@@ -251,7 +251,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "黑貓",
-            "prompt": "伯爵的寶箱裡傳出小小的聲音：為什麼蠶寶寶很有錢？",
+            "prompt": "為什麼蠶寶寶很有錢？",
             "options": [
               "因為牠會挖金礦",
               "因為牠很會節儉",
@@ -274,7 +274,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "魔法契約",
-            "prompt": "盜賊的契約上歪歪扭扭地寫著：鐵塊放在外面會生鏽，那金子放在外面會怎樣？",
+            "prompt": "鐵塊放在外面會生鏽，那金子放在外面會怎樣？",
             "options": [
               "會變黑",
               "會發光",
@@ -297,7 +297,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "黑貓",
-            "prompt": "管家的畫像低聲說：什麼布剪不斷也無法拿來做衣服？",
+            "prompt": "什麼布剪不斷也無法拿來做衣服？",
             "options": [
               "桌布",
               "帆布",
@@ -320,7 +320,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "家庭教師",
-            "prompt": "家庭教師翻開課本說：什麼叫作「講信用」？",
+            "prompt": "什麼叫作「講信用」？",
             "options": [
               "說話不算話",
               "答應別人的事情盡力做到",
@@ -343,7 +343,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "女僕",
-            "prompt": "女僕舉著燭臺問：當我們不小心打破學校的公物時，應該怎麼處理？",
+            "prompt": "當我們不小心打破學校的公物時，應該怎麼處理？",
             "options": [
               "偷偷踢到角落裝作不知道",
               "主動向老師報告並討論如何處置",
@@ -386,7 +386,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "水晶球",
-            "prompt": "水晶球裡浮現一個問題：什麼是「尊重別人」的表現？",
+            "prompt": "什麼是「尊重別人」的表現？",
             "options": [
               "取別人的難聽外號",
               "接納別人的外貌與興趣差異，不嘲笑他人",
@@ -409,7 +409,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "魔法師霍爾",
-            "prompt": "霍爾對著鏡子問：收到別人給予的稱讚時，可以怎麼回答？",
+            "prompt": "收到別人給予的稱讚時，可以怎麼回答？",
             "options": [
               "「謝謝你的稱讚！」",
               "「你真煩！」",
@@ -432,7 +432,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "魔法師莉亞",
-            "prompt": "莉亞翻開魔法書說：當自己做錯事情時，負責任的態度是？",
+            "prompt": "當自己做錯事情時，負責任的態度是？",
             "options": [
               "嫁禍給其他同學",
               "勇於承認錯誤並道歉改正",
@@ -455,7 +455,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "黑貓",
-            "prompt": "學徒們的沙漏停了下來：參加體育比賽輸掉時，良好的風度是？",
+            "prompt": "參加體育比賽輸掉時，良好的風度是？",
             "options": [
               "大哭大鬧罵裁判",
               "展現運動家精神，向贏家道賀",
@@ -478,7 +478,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "魔法師莉亞",
-            "prompt": "莉亞的魔藥瓶冒出泡泡：如果你想表達不同的想法，怎麼樣講比較適當？",
+            "prompt": "如果你想表達不同的想法，怎麼樣講比較適當？",
             "options": [
               "「你講的都是廢話！」",
               "「我的想法有點不一樣，我覺得……」",
@@ -501,7 +501,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "E",
             "speaker": "黑貓",
-            "prompt": "霍爾的告白卷軸慢慢打開：當同學獲獎或表現優秀時，我們應該？",
+            "prompt": "當同學獲獎或表現優秀時，我們應該？",
             "options": [
               "嫉妒並說他壞話",
               "真誠地為他恭喜和鼓掌",
@@ -566,7 +566,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "小幽靈",
-            "prompt": "甜點攤的小幽靈端出一碗點心問：哪一種花夏天是冰冷的，冬天是溫熱的？",
+            "prompt": "哪一種花夏天是冰冷的，冬天是溫熱的？",
             "options": [
               "菊花",
               "玫瑰花",
@@ -589,7 +589,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "南瓜湯老闆",
-            "prompt": "南瓜湯老闆笑著問：什麼狗不會叫也不會咬人？",
+            "prompt": "什麼狗不會叫也不會咬人？",
             "options": [
               "瘋狗",
               "熱狗",
@@ -612,7 +612,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "A",
             "speaker": "菜單卷軸",
-            "prompt": "麵包師傅的菜單上寫著謎題：汽車會飛，猜一種飲料？",
+            "prompt": "汽車會飛，猜一種飲料？",
             "options": [
               "牛奶",
               "綠茶",
@@ -635,7 +635,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "B",
             "speaker": "黑貓",
-            "prompt": "薑茶攤的茶壺冒著熱氣問：中秋節的時候，傳統上大家會吃什麼食物？",
+            "prompt": "中秋節的時候，傳統上大家會吃什麼食物？",
             "options": [
               "年糕",
               "粽子",
@@ -658,7 +658,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "B",
             "speaker": "幽靈說書人",
-            "prompt": "幽靈說書人提醒大家：吃飯前一定要做什麼事情來保持衛生？",
+            "prompt": "吃飯前一定要做什麼事情來保持衛生？",
             "options": [
               "跑步",
               "洗手",
@@ -681,7 +681,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "黑貓",
-            "prompt": "偷吃的小幽靈不好意思地問：吃東西時，為了避免哽噎危險，應該怎麼做？",
+            "prompt": "吃東西時，為了避免哽噎危險，應該怎麼做？",
             "options": [
               "邊吃邊大笑奔跑",
               "細嚼慢嚥，不邊吃邊說話",
@@ -751,7 +751,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "黑貓",
-            "prompt": "冒泡的大鍋旁貼著一張警告：廚房裡瓦斯漏氣時，第一時間絕對不能做什麼？",
+            "prompt": "廚房裡瓦斯漏氣時，第一時間絕對不能做什麼？",
             "options": [
               "開窗通風",
               "關閉瓦斯開關",
@@ -774,7 +774,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "藥水瓶",
-            "prompt": "藥水架上的瓶子叮叮作響：下列哪一種東西不能直接放入微波爐加熱，以免發生危險？",
+            "prompt": "下列哪一種東西不能直接放入微波爐加熱，以免發生危險？",
             "options": [
               "微波專用碗",
               "不銹鋼金屬餐盒",
@@ -797,7 +797,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "南瓜廚師長",
-            "prompt": "南瓜廚師長一邊做菜一邊問：被熱水燙到時，第一時間的急救步驟首要是？",
+            "prompt": "被熱水燙到時，第一時間的急救步驟首要是？",
             "options": [
               "塗醬油或牙膏",
               "沖（用流動冷水沖洗降溫）",
@@ -820,7 +820,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "女巫",
-            "prompt": "晚宴食譜上用紅字寫著：下列哪一種物品屬於易燃物，靠近火源非常危險？",
+            "prompt": "下列哪一種物品屬於易燃物，靠近火源非常危險？",
             "options": [
               "鐵碗",
               "酒精與去光水",
@@ -843,7 +843,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "C",
             "speaker": "小廚師阿福",
-            "prompt": "食材櫃裡的熱水壺咕嘟咕嘟地問：水加熱到沸騰時會變成什麼狀態？",
+            "prompt": "水加熱到沸騰時會變成什麼狀態？",
             "options": [
               "冰塊",
               "水蒸氣",
@@ -866,7 +866,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "C",
             "speaker": "送信烏鴉",
-            "prompt": "送信烏鴉叼來一塊冰：水結冰的溫度是多少攝氏度（℃）？",
+            "prompt": "水結冰的溫度是多少攝氏度（℃）？",
             "options": [
               "100℃",
               "50℃",
@@ -909,7 +909,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "B",
             "speaker": "大鐘",
-            "prompt": "生鏽的大鐘滴答滴答地問：指針式時鐘上最長、走得最快的針是什麼針？",
+            "prompt": "指針式時鐘上最長、走得最快的針是什麼針？",
             "options": [
               "時針",
               "分針",
@@ -932,7 +932,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "B",
             "speaker": "黑貓",
-            "prompt": "星光水晶球裡浮出數字：1分鐘等於多少秒？",
+            "prompt": "1分鐘等於多少秒？",
             "options": [
               "10秒",
               "30秒",
@@ -955,7 +955,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "B",
             "speaker": "小南瓜",
-            "prompt": "小南瓜的紙條上寫著：一天有幾個小時？",
+            "prompt": "一天有幾個小時？",
             "options": [
               "12小時",
               "24小時",
@@ -978,7 +978,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "C",
             "speaker": "守鐘人",
-            "prompt": "破窗旁的燈籠閃了一下：貓頭鷹通常在什麼時候出來活動？",
+            "prompt": "貓頭鷹通常在什麼時候出來活動？",
             "options": [
               "早晨",
               "中午",
@@ -1001,7 +1001,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "黑貓",
-            "prompt": "南瓜巫師的食譜旁貼著緊急電話：發生火災時，緊急通報的電話號碼是多少？",
+            "prompt": "發生火災時，緊急通報的電話號碼是多少？",
             "options": [
               "110",
               "119",
@@ -1024,7 +1024,7 @@ window.DEFAULT_CONTENT = {
           "q": {
             "type": "D",
             "speaker": "沙漏",
-            "prompt": "最後的沙漏開始搖晃：遇到地震時，在室內最重要的自我保護動作是？",
+            "prompt": "遇到地震時，在室內最重要的自我保護動作是？",
             "options": [
               "趴下、掩護、穩住",
               "站著大聲尖叫",

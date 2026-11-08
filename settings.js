@@ -48,23 +48,24 @@ window.WQSettings = (function () {
     var pool = allKeys(C);
     if (used && used.length) { var u = {}; used.forEach(function (k) { u[k] = 1; }); pool = pool.filter(function (k) { return !u[k]; }); }
     if (n) n = Math.max(n, minDraw(C));
-    if (!n || n >= pool.length) return sortKeys(pool);
-    /* 依房間平均分配：每個房間抽的題數最多只差 1 題（房間題目不夠時，多的分給其他房間） */
-    var by = {}; pool.forEach(function (k) { var r = k.split('-')[0]; (by[r] = by[r] || []).push(k); });
-    var rooms = shuffle(Object.keys(by)), q = {}, left = n;
-    rooms.forEach(function (r) { q[r] = 0; by[r] = shuffle(by[r]); });
+    /* 每次都從整本題本隨機抽題（題目和房間不綁定，buildRooms 再隨機分到各房間） */
+    pool = shuffle(pool);
+    return !n || n >= pool.length ? pool : pool.slice(0, n);
+  }
+  /* 平均分配：每個房間的題數最多只差 1 題，不超過房間的物品數 */
+  function spread(caps, n) {
+    var q = caps.map(function () { return 0; }), order = shuffle(caps.map(function (_, i) { return i; })), left = n;
     while (left > 0) {
-      var open = rooms.filter(function (r) { return q[r] < by[r].length; }); if (!open.length) break;
-      var low = Math.min.apply(null, open.map(function (r) { return q[r]; }));
-      open.filter(function (r) { return q[r] === low; }).some(function (r) { q[r]++; left--; return left <= 0; });
+      var open = order.filter(function (i) { return q[i] < caps[i]; }); if (!open.length) break;
+      var low = Math.min.apply(null, open.map(function (i) { return q[i]; }));
+      open.filter(function (i) { return q[i] === low; }).some(function (i) { q[i]++; left--; return left <= 0; });
     }
-    var out = []; rooms.forEach(function (r) { out = out.concat(by[r].slice(0, q[r])); });
-    return sortKeys(out);
+    return q;
   }
   var UNLOCK = [0, 0, 0, 2, 2, 4];
   function copyObj(C, k) { var p = k.split('-'), o = JSON.parse(JSON.stringify(C.rooms[+p[0]].objects[+p[1]])); o.key = k; prepQ(o.q); return o; }
   /* 依抽到的題目組成房間。
-     單人（預設）：題目留在原本的房間（每關最後的機關要用這個房間的線索），房間裡的順序隨機。
+     單人（預設）：題目隨機分到各房間（平均分配），放進房間裡隨機挑出的物品；物品、線索和機關留在原本的房間，所以機關一定解得開。
      mix（多人）：全部題目完全打亂，再依序分配到房間。 */
   function buildRooms(C, keys, opts) {
     var out = [];
@@ -78,11 +79,12 @@ window.WQSettings = (function () {
       }
       return out;
     }
-    var map = {}; keys.forEach(function (k) { var p = k.split('-'); (map[p[0]] = map[p[0]] || []).push(+p[1]); });
+    var qs = shuffle(keys), at = 0, cnt = spread(C.rooms.map(function (r) { return r.objects.length; }), qs.length);
     C.rooms.forEach(function (r, i) {
-      if (!map[i]) return;
-      var objs = shuffle(map[i]).map(function (j, n) {
-        var o = copyObj(C, i + '-' + j);
+      if (!cnt[i]) return;
+      var objs = shuffle(r.objects.map(function (_, j) { return j; })).slice(0, cnt[i]).map(function (j, n) {
+        var src = copyObj(C, qs[at++]), o = JSON.parse(JSON.stringify(r.objects[j]));
+        o.word = src.word; o.q = src.q; o.q.speaker = (r.objects[j].q && r.objects[j].q.speaker) || r.objects[j].name; o.key = src.key;
         o.unlock = Math.min(UNLOCK[n] != null ? UNLOCK[n] : 4, n);
         return o;
       });

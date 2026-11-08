@@ -118,7 +118,7 @@
         var MIN = WQSettings.minDraw(C); if (S.drawCount < MIN) S.drawCount = MIN;
         var q = [[TOTAL, '全部 ' + TOTAL + ' 題']]; [18, 24, 30].forEach(function (n) { if (n < TOTAL && n >= MIN) q.push([n, n + ' 題']); });
         number(box, 'drawCount', MIN, TOTAL, '題', q);
-        box.appendChild(el('p', 'mute', '工具會隨機抽題，平均分到每個房間（每個房間最多只差 1 題）。題目會留在原本的房間，因為最後的機關要用這個房間的線索。最少 ' + MIN + ' 題，也就是每個房間至少 3 題。'));
+        box.appendChild(el('p', 'mute', '每一次冒險都會從整本題本重新隨機抽題、隨機分到每個房間（每個房間最多只差 1 題），出題順序也不同。房間的物品、線索和機關不變，所以機關一定解得開。最少 ' + MIN + ' 題，也就是每個房間至少 3 題。'));
       } },
     { title: '第二章：破關之後', say: ['勇者打開最後的大門以後，還要接受另一段冒險嗎？'],
       body: function (box) {
