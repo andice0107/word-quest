@@ -234,6 +234,7 @@ small{opacity:.75}
         clue: str(r[15]) });
     });
     c.rooms = c.rooms.filter(Boolean);
+    c.rooms.forEach(function (rm, i) { fixClues(rm, i, warns); });
     if (!c.rooms.length) errs.push('「關卡」工作表沒有任何關卡');
     c.rooms.forEach(function (rm, i) {
       if (!rm.objects.length) errs.push('第 ' + (i + 1) + ' 關沒有任何題目');
@@ -243,6 +244,32 @@ small{opacity:.75}
       var seen = {}; rm.objects.forEach(function (o) { var t = o.tint; while (seen[o.sprite + t]) t += 70; o.tint = t % 360; seen[o.sprite + o.tint] = 1; });
     });
     return { content: c, errs: errs, warns: warns };
+  }
+  /* 線索不能直接寫出機關答案：如果有，工具自動改成「分段線索」（每條只給一部分），輪流放到這個房間的題目，
+     遊戲時沒抽到的線索會變成「古書殘頁」，所以機關一定解得開 */
+  function fixClues(rm, i, warns) {
+    var p = rm.puzzle, os = rm.objects; if (!p || !os.length) return;
+    var leak, pieces = [];
+    if (p.type === 'code') {
+      var a = String(p.answer || ''); leak = a.length >= 2 && os.some(function (o) { return String(o.clue || '').replace(/\s/g, '').indexOf(a) >= 0; });
+      a.split('').forEach(function (d, k) { pieces.push('密碼從左邊數來第 ' + (k + 1) + ' 位數字是 ' + d); });
+    } else if (p.type === 'sequence') {
+      var nm = p.items.map(function (it) { return it.name; });
+      /* 一條線索就照正確順序列出全部項目（而且有 → 或「順序」字樣）＝直接給答案 */
+      leak = nm.length >= 2 && os.some(function (o) {
+        var t = String(o.clue || ''), last = -1;
+        if (!/→|->|>|＞|順序|依序/.test(t)) return false;
+        return p.items.every(function (it) { var at = [it.name, it.label].filter(Boolean).map(function (x) { return t.indexOf(x, last + 1); }).filter(function (x) { return x > last; }); if (!at.length) return false; last = Math.min.apply(null, at); return true; });
+      });
+      nm.forEach(function (x, k) { pieces.push('第 ' + (k + 1) + ' 個要放「' + x + '」'); });
+    } else {
+      var ok = p.items[p.answer] || {}, re = new RegExp('第\\s*' + (p.answer + 1) + '\\s*個');
+      leak = os.some(function (o) { var t = String(o.clue || ''); return (ok.name && t.indexOf(ok.name) >= 0) || re.test(t); });
+      p.items.forEach(function (it, k) { if (k !== p.answer) pieces.push('答案不是「' + it.name + '」'); });
+    }
+    if (!leak || !pieces.length) return;
+    os.forEach(function (o, j) { o.clue = pieces[j % pieces.length]; });
+    warns.push('第 ' + (i + 1) + ' 關的線索直接寫出了機關答案，已自動改成 ' + pieces.length + ' 條分段線索（例如：' + pieces[0] + '），要把每條線索都找齊才解得開');
   }
   /* 填充題要學生寫國字或注音（1～4 個字）→ 一律改成手寫；5 個字以上才保留打字 */
   var HAN = /[\u3400-\u9fff\uf900-\ufaff]/g, ZY = /[\u3105-\u312f]/;
