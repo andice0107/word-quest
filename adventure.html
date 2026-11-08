@@ -114,10 +114,12 @@
       } },
     { title: '第一章：抽出咒語', say: ['魔法書裡一共有 ' + TOTAL + ' 道咒語。', '這一趟冒險要從題本中抽出幾道呢？工具會把抽到的題目平均分到每個房間。'],
       body: function (box) {
-        if (!S.drawCount || S.drawCount > TOTAL) S.drawCount = TOTAL;
+        var MAX = WQSettings.maxDraw(C), DEF = WQSettings.defDraw(C);
+        if (!S.drawCount) S.drawCount = DEF; if (S.drawCount > MAX) S.drawCount = MAX;
         var MIN = WQSettings.minDraw(C); if (S.drawCount < MIN) S.drawCount = MIN;
-        var q = [[TOTAL, '全部 ' + TOTAL + ' 題']]; [18, 24, 30].forEach(function (n) { if (n < TOTAL && n >= MIN) q.push([n, n + ' 題']); });
-        number(box, 'drawCount', MIN, TOTAL, '題', q);
+        var q = []; [18, 24, 30, 36, 42, 48].forEach(function (n) { if (n < MAX && n >= MIN) q.push([n, n + ' 題']); }); q.push([MAX, (MAX >= TOTAL ? '全部 ' : '最多 ') + MAX + ' 題']);
+        number(box, 'drawCount', MIN, MAX, '題', q);
+        if (TOTAL > MAX) box.appendChild(el('p', 'mute', '題本有 ' + TOTAL + ' 題，每個房間最多放 8 道咒語，所以一次冒險最多 ' + MAX + ' 題；每次冒險都從全部 ' + TOTAL + ' 題裡重新隨機抽。'));
         box.appendChild(el('p', 'mute', '每一次冒險都會從整本題本重新隨機抽題、隨機分到每個房間（每個房間最多只差 1 題），出題順序也不同。房間的物品、線索和機關不變，所以機關一定解得開。最少 ' + MIN + ' 題，也就是每個房間至少 3 題。'));
       } },
     { title: '第二章：破關之後', say: ['勇者打開最後的大門以後，還要接受另一段冒險嗎？'],
@@ -162,7 +164,7 @@
         var d = el('dl', 'sum');
         function row(k, v) { d.appendChild(el('dt', '', k)); d.appendChild(el('dd', '', v)); }
         row('題本', (C.__custom ? '老師自訂題本' : C.__demo === 'guoyu' ? '國語題本' : '非學科示範題本') + '，共 ' + TOTAL + ' 題');
-        row('單次冒險抽題', (S.drawCount >= TOTAL ? '全部 ' : '') + Math.min(S.drawCount || TOTAL, TOTAL) + ' 題');
+        var dn = Math.min(S.drawCount || WQSettings.defDraw(C), WQSettings.maxDraw(C)); row('單次冒險抽題', (dn >= TOTAL ? '全部 ' : '') + dn + ' 題' + (dn < TOTAL ? '（從 ' + TOTAL + ' 題中隨機抽）' : ''));
         row('破關之後', WQSettings.REPEAT_NAMES[S.repeat]);
         row('每題作答時限', S.qTimer ? S.qSeconds + ' 秒' : '不限時');
         row('過關總時間', S.totalTimer ? '記錄' : '不記錄');
@@ -192,7 +194,7 @@
       var go = el('button', 'btn btn-gold', S.mode === 'multi' ? '出發！開設多人闖關' : '出發！開始單人冒險'); go.type = 'button'; go.id = 'adv-go';
       go.onclick = function () { WQSettings.save(S); location.href = S.mode === 'multi' ? 'host.html' + location.search : 'index.html?adv=1'; };
       nav.appendChild(go);
-      var rs = el('button', 'btn btn-violet', '全部還原預設'); rs.type = 'button'; rs.onclick = function () { S = WQSettings.defaults(); S.drawCount = TOTAL; WQSettings.save(S); cur = 0; render(); }; nav.appendChild(rs);
+      var rs = el('button', 'btn btn-violet', '全部還原預設'); rs.type = 'button'; rs.onclick = function () { S = WQSettings.defaults(); S.drawCount = WQSettings.defDraw(C); WQSettings.save(S); cur = 0; render(); }; nav.appendChild(rs);
     }
   }
   render();

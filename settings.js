@@ -43,11 +43,16 @@ window.WQSettings = (function () {
   function sortKeys(a) { return a.slice().sort(function (x, y) { var p = x.split('-'), q = y.split('-'); return (p[0] - q[0]) || (p[1] - q[1]); }); }
   /* 從題本抽題；used = 已抽過的題目（norepeat 模式用） */
   var MIN_DRAW = 18; // 每個房間至少 3 題
+  /* 題庫可以很大（例如整份命題光碟）：每個房間畫面上最多 8 個物品，所以一次冒險最多 房間數×8 題；
+     沒有指定題數（快速進入）時，預設每個房間 6 題（6 個房間＝36 題），題庫不到 36 題就全部用 */
+  var ROOM_MAX = 8, ROOM_DEF = 6;
   function minDraw(C) { return Math.min(MIN_DRAW, total(C)); }
+  function maxDraw(C) { return Math.min(total(C), C.rooms.length * ROOM_MAX); }
+  function defDraw(C) { return Math.min(total(C), C.rooms.length * ROOM_DEF); }
   function draw(C, n, used) {
     var pool = allKeys(C);
     if (used && used.length) { var u = {}; used.forEach(function (k) { u[k] = 1; }); pool = pool.filter(function (k) { return !u[k]; }); }
-    if (n) n = Math.max(n, minDraw(C));
+    n = n ? Math.min(Math.max(n, minDraw(C)), maxDraw(C)) : defDraw(C);
     /* 每次都從整本題本隨機抽題（題目和房間不綁定，buildRooms 再隨機分到各房間） */
     pool = shuffle(pool);
     return !n || n >= pool.length ? pool : pool.slice(0, n);
@@ -70,7 +75,7 @@ window.WQSettings = (function () {
   function buildRooms(C, keys, opts) {
     var out = [];
     if (opts && opts.mix) {
-      var ks = shuffle(keys), nr = Math.max(1, Math.min(C.rooms.length, Math.ceil(ks.length / 6))), at = 0;
+      var ks = shuffle(keys), nr = Math.max(1, Math.min(C.rooms.length, Math.ceil(ks.length / ROOM_DEF))), at = 0;
       for (var ri = 0; ri < nr; ri++) {
         var cnt = Math.floor(ks.length / nr) + (ri < ks.length % nr ? 1 : 0);
         var room = JSON.parse(JSON.stringify(C.rooms[ri]));
@@ -79,7 +84,7 @@ window.WQSettings = (function () {
       }
       return out;
     }
-    var qs = shuffle(keys), at = 0, cnt = spread(C.rooms.map(function (r) { return r.objects.length; }), qs.length);
+    var qs = shuffle(keys), at = 0, cnt = spread(C.rooms.map(function (r) { return Math.min(ROOM_MAX, r.objects.length); }), qs.length);
     C.rooms.forEach(function (r, i) {
       if (!cnt[i]) return;
       var objs = shuffle(r.objects.map(function (_, j) { return j; })).slice(0, cnt[i]).map(function (j, n) {
@@ -89,7 +94,9 @@ window.WQSettings = (function () {
         return o;
       });
       var room = JSON.parse(JSON.stringify(r)); room.objects = objs; room.origIndex = i;
-      room.allClues = r.objects.map(function (o) { return { from: o.name, text: o.clue }; });
+      /* 沒抽到的物品的線索變成「古書殘頁」（題庫很大時只留不重複的前 8 條，免得線索本太長） */
+      var seenC = {}; room.allClues = r.objects.filter(function (o) { if (!o.clue || seenC[o.clue]) return false; seenC[o.clue] = 1; return true; }).slice(0, ROOM_MAX).map(function (o) { return { from: o.name, text: o.clue }; });
+      objs.forEach(function (o) { if (o.clue && !seenC[o.clue]) { seenC[o.clue] = 1; room.allClues.push({ from: o.name, text: o.clue }); } });
       out.push(room);
     });
     return out;
@@ -248,7 +255,7 @@ window.WQSettings = (function () {
     r.readAsText(file);
   }
   var REPEAT_NAMES = { none: '不接受另一趟挑戰', redraw: '從全部題目重新抽題', norepeat: '抽過的不再抽，全部抽完才是終極破關' };
-  return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, minDraw: minDraw, saveFile: saveFile, readSave: readSave, buildRooms: buildRooms, total: total, allKeys: allKeys,
+  return { defaults: defaults, load: load, save: save, clean: clean, draw: draw, minDraw: minDraw, maxDraw: maxDraw, defDraw: defDraw, ROOM_MAX: ROOM_MAX, saveFile: saveFile, readSave: readSave, buildRooms: buildRooms, total: total, allKeys: allKeys,
     loadUsed: loadUsed, saveUsed: saveUsed, loadContent: loadContent, shuffle: shuffle, REPEAT_NAMES: REPEAT_NAMES,
     LCQ: LCQ, inputOf: inputOf, isChoice: isChoice, inputLabel: inputLabel, fillMatch: fillMatch, answerShow: answerShow, loadInk: loadInk, cellsOf: cellsOf, cellCount: cellCount,
     DRAW_KINDS: DRAW_KINDS, INPUT_NAMES: INPUT_NAMES, forcedSeconds: forcedSeconds, perCell: perCell, freePts: freePts, maxPts: maxPts, TEXT_LEVELS: TEXT_LEVELS, TEXT_MAX: TEXT_MAX, markFromCells: markFromCells, CHAR_PTS: CHAR_PTS, HINT_PTS: HINT_PTS, hintName: hintName, charHints: charHints, hintBar: hintBar, needsTeacher: needsTeacher, heroName: heroName };

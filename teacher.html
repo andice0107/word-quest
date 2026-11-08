@@ -69,7 +69,7 @@ small{opacity:.75}
     <p><b>只在這台電腦／平板玩：</b>按「套用到這台裝置」，再回遊戲就是新題目。</p>
     <button id="apply" disabled>套用到這台裝置</button>
     <div id="go-row" class="go-row" style="display:none">
-      <p><b>直接用自己的題本開始冒險</b>（使用預設設定：全部題目、每題不限時；想改設定請到「冒險篇章」）</p>
+      <p><b>直接用自己的題本開始冒險</b>（使用預設設定：隨機抽 36 題，題庫不到 36 題就全部用；每題不限時；想改設定請到「冒險篇章」）</p>
       <a class="btn" id="go-solo" href="index.html#go">⚡ 單人：進入自己的題本冒險</a>
       <a class="btn" id="go-multi" href="host.html?def=1">👥 多人：開始多人冒險（學生掃 QR code 決定角色）</a>
     </div>
@@ -113,7 +113,7 @@ small{opacity:.75}
   $('dl').onclick = function () {
     var c = current(), wb = XLSX.utils.book_new();
     var help = [['語詞闖關遊戲 題本說明'], [''],
-      ['1. 「題目」工作表：每一列是一道題。每個關卡要有 6 題（也可以 3～8 題）。'],
+      ['1. 「題目」工作表：每一列是一道題。每個關卡的題數不限，可以把整份題庫放進來；每次冒險都會從全部題目隨機抽題（快速進入預設 36 題，每個房間 6 題；冒險篇章可以改題數，每個房間最多 8 題）。'],
       ['2. 「題型代號」：' + Object.keys(c.typeNames).map(function (k) { return k + '=' + c.typeNames[k]; }).join('，') + '。只影響題目上方顯示的小字。'],
       ['3. 「正確答案」填 1、2、3 或 4，對應選項1～4。選項可以只填 3 個。'],
       ['4. 「圖示」可以填：' + SPRITES.map(function (s) { return SPRITE_ZH[s]; }).join('、') + '。'],
@@ -131,7 +131,7 @@ small{opacity:.75}
       ['   寫國字的參考答案填正確的字（例如 朋友）；改錯字填「錯→正」（例如 在→再）；寫注音填注音，每個字用空格隔開。'],
       ['   「田字格數」通常空白，工具會依參考答案自動決定；造詞的學生可以自己按「＋增加／－減少」調整格子（最少 2 格、最多 10 格），這裡填的是一開始的格數，空白就是 2 格。'],
       ['   填充題如果是要學生「寫出國字或注音」：答案是 1～4 個字的國字或注音，上傳時會自動改成手寫（寫國字／寫注音），題目裡要附上目標字、語詞的注音（寫國字）或國字（寫注音）；5 個字以上（含 5 個字）的答案才保留打字。'],
-      ['   「字的提示」：寫國字填每個字的部件提示（例如 奪：大＋隹＋寸），改錯字填每個正確字的部首意義（例如 距：和腳、走路有關）；每個字一個，用；分隔，依字的順序。學生按「💡 提示」看了某個字的提示，那個字答對只得 30 分（沒看提示答對 60 分），每個字分開計分。'],
+      ['   「字的提示」：寫國字填每個字的部件提示（例如「奪」填 大＋隹＋寸），改錯字填每個正確字的部首意義（例如「距」填 和腳、走路有關），提示裡不要寫出答案字；每個字一個，用；分隔，依字的順序。學生按「💡 提示」看了某個字的提示，那個字答對只得 30 分（沒看提示答對 60 分），每個字分開計分。'],
       ['   部首意義提示絕對不能寫出部首本身或它的變形、俗稱（例如「水部」「三點水」「和水有關」都不行，要寫「和液體、河流有關」）。上傳時工具會自動檢查，說出部首的提示會被拿掉。'],
       ['10. 改好後存檔，回到老師設定頁面上傳。']];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(help), '說明');
@@ -237,9 +237,9 @@ small{opacity:.75}
     if (!c.rooms.length) errs.push('「關卡」工作表沒有任何關卡');
     c.rooms.forEach(function (rm, i) {
       if (!rm.objects.length) errs.push('第 ' + (i + 1) + ' 關沒有任何題目');
-      if (rm.objects.length > 8) errs.push('第 ' + (i + 1) + ' 關最多 8 題（現在 ' + rm.objects.length + ' 題）');
-      var max = rm.objects.length - 1;
-      rm.objects.forEach(function (o) { if (o.unlock > max) { warns.push('「' + o.name + '」出現條件太大，已改成 ' + max); o.unlock = max; } });
+      /* 每關的題數不限（可以上傳整份題庫）；遊戲時每次隨機抽題，畫面上每個房間最多 8 個物品 */
+      var max = Math.min(rm.objects.length, 8) - 1;
+      rm.objects.forEach(function (o) { if (o.unlock > max) o.unlock = max; });
       var seen = {}; rm.objects.forEach(function (o) { var t = o.tint; while (seen[o.sprite + t]) t += 70; o.tint = t % 360; seen[o.sprite + o.tint] = 1; });
     });
     return { content: c, errs: errs, warns: warns };
@@ -267,6 +267,7 @@ small{opacity:.75}
     hs = hs.slice(0, tg.length || hs.length);
     hs.forEach(function (h, i) {
       var t = tg[i]; if (!h || !t) return;
+      if (h.indexOf(t) === 0 && /^[：:\s]/.test(h.slice(t.length))) { h = hs[i] = h.slice(t.length).replace(/^[：:\s]+/, ''); if (!h) return; } // 「鷹：广＋…」開頭的字自動去掉
       if (h.indexOf(t) >= 0) { hs[i] = ''; warns.push(line + '：第 ' + (i + 1) + ' 字的提示直接寫出了答案「' + t + '」，已自動拿掉，請改寫'); return; }
       if (q.kind !== 'correction') return;
       var r = radOf(t), bad = r ? ((window.WQ_RAD.names || {})[r] || [r]) : [], hit = bad.filter(function (b) { return h.indexOf(b) >= 0; })[0];
@@ -277,10 +278,10 @@ small{opacity:.75}
   function report(r) {
     var c = r.content, h = '';
     if (r.errs.length) h += '<p class="err">有 ' + r.errs.length + ' 個地方要修正，修好再上傳：</p><ul class="err"><li>' + r.errs.join('</li><li>') + '</li></ul>';
-    else h += '<p class="ok">讀取成功！《' + c.title + '》共 ' + c.rooms.length + ' 關、' + c.rooms.reduce(function (s, x) { return s + x.objects.length; }, 0) + ' 題。</p>';
+    else h += '<p class="ok">讀取成功！《' + c.title + '》共 ' + c.rooms.length + ' 關、' + c.rooms.reduce(function (s, x) { return s + x.objects.length; }, 0) + ' 題。' + (function () { var t = c.rooms.reduce(function (s, x) { return s + x.objects.length; }, 0), d = Math.min(t, c.rooms.length * 6); return t > d ? '快速進入遊戲時，每次從全部題目隨機抽 ' + d + ' 題（每個房間 6 題）；想抽更多題，到「冒險篇章」設定（最多 ' + Math.min(t, c.rooms.length * 8) + ' 題）。' : ''; })() + '</p>';
     if (r.warns.length) h += '<ul><li>' + r.warns.join('</li><li>') + '</li></ul>';
     $('status').innerHTML = h;
-    $('preview').innerHTML = r.errs.length ? '' : c.rooms.map(function (rm, i) { return '<div class="room">第 ' + (i + 1) + ' 關　' + esc(rm.name) + '（' + rm.objects.length + ' 題）：' + rm.objects.map(function (o) { return esc(o.word) + (o.q.input ? '<small>（' + MODE_OUT[o.q.input === 'draw' ? o.q.kind : o.q.input] + '）</small>' : ''); }).join('、') + '<br><small>機關：' + esc(rm.puzzle.name) + '（' + PT[rm.puzzle.type] + '）</small></div>'; }).join('');
+    $('preview').innerHTML = r.errs.length ? '' : c.rooms.map(function (rm, i) { return '<div class="room">第 ' + (i + 1) + ' 關　' + esc(rm.name) + '（' + rm.objects.length + ' 題）：' + rm.objects.slice(0, 12).map(function (o) { return esc(o.word) + (o.q.input ? '<small>（' + MODE_OUT[o.q.input === 'draw' ? o.q.kind : o.q.input] + '）</small>' : ''); }).join('、') + (rm.objects.length > 12 ? '…等 ' + rm.objects.length + ' 題' : '') + '<br><small>機關：' + esc(rm.puzzle.name) + '（' + PT[rm.puzzle.type] + '）</small></div>'; }).join('');
     pending = r.errs.length ? null : c;
     $('apply').disabled = $('share').disabled = !pending;
   }
