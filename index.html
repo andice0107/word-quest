@@ -113,6 +113,13 @@
     <div id="grade-list"></div>
     <button id="grade-close" class="btn btn-gold" type="button">批改完成，回到遊戲</button>
   </div></div>
+  <div id="pin-ov" class="grade-ov hidden"><div class="grade-card pin-card">
+    <h2 id="pin-title">🔒 老師核對密碼</h2><p id="pin-msg" class="mute"></p>
+    <input id="pin-in" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="4～8 位數字">
+    <input id="pin-in2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="再輸入一次">
+    <p id="pin-err" class="pin-err"></p>
+    <div class="pin-btns"><button id="pin-ok" class="btn btn-gold" type="button">確定</button><button id="pin-cancel" class="btn btn-violet" type="button">取消</button></div>
+  </div></div>
   <div id="fx"></div>
 </main>
 <script src="share.js"></script>

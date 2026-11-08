@@ -133,6 +133,7 @@
         var wrap = el('div', 'ctrl'); var nb = el('div');
         toggle(wrap, 'qTimer', '每題作答時限', function () { nb.style.display = S.qTimer ? '' : 'none'; });
         nb.appendChild(el('div', 'note-s', '每題可以作答的秒數：')); number(nb, 'qSeconds', 5, 300, '秒', [[15, '15 秒'], [20, '20 秒'], [30, '30 秒'], [45, '45 秒'], [60, '60 秒']]);
+        nb.appendChild(el('div', 'note-s', '開啟後所有題型都會倒數：選擇、是非、填充題用上面的秒數；寫國字、寫注音 60 秒，造詞、改錯字、手寫作答 100 秒，造句、打字作答 3 分鐘。關閉時所有題型都不倒數。'));
         nb.style.display = S.qTimer ? '' : 'none'; wrap.appendChild(nb); box.appendChild(wrap);
       } },
     { title: '第四章：午夜大鐘', say: ['要不要讓午夜大鐘記錄勇者花了多少時間破關？', '開啟後畫面上會一直顯示總時間，結算時也會列出來。'],

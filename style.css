@@ -344,3 +344,9 @@ canvas.cell{width:var(--cell);height:var(--cell);display:block;background:var(--
 .opt-go{display:block;margin:12px auto 0;min-width:200px}
 .opt-go:disabled{opacity:.45;cursor:default}
 .gitem .levels button{min-width:52px}
+
+/* 老師核對密碼 */
+.pin-card{width:min(440px,100%);margin-top:12vh;text-align:center}
+.pin-card input{display:block;width:100%;box-sizing:border-box;margin:8px 0;font-size:24px;letter-spacing:6px;text-align:center;padding:10px;border-radius:12px;border:2px solid #e8c15a;background:#fffaf0;color:#2a1f4a}
+.pin-err{color:#ff9e94;min-height:1.4em;margin:4px 0}
+.pin-btns{display:flex;gap:10px;justify-content:center}

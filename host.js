@@ -180,7 +180,7 @@
     var right = el('div', 'panel roster'); right.appendChild(el('div', 'h-title', C.titleMain ? C.titleMain + '：' + (C.titleSub || '') : (C.title || '')));
     right.appendChild(el('div', 'gold', '')).id = 'roster-count';
     var chips = el('div', 'set-chips');
-    [('抽 ' + G.seq.length + ' 題'), SET.qTimer ? '每題 ' + SET.qSeconds + ' 秒' : '不限時', '手寫題 60～100 秒・造句 3 分鐘（固定）', SET.totalTimer ? '記錄總時間' : '', '商人 ' + SET.merchantProb + '%・交易 ' + SET.tradeSeconds + ' 秒',
+    [('抽 ' + G.seq.length + ' 題'), SET.qTimer ? '每題 ' + SET.qSeconds + ' 秒' : '所有題目都不限時', SET.qTimer ? '手寫題 60～100 秒・造句 3 分鐘' : '', SET.totalTimer ? '記錄總時間' : '', '商人 ' + SET.merchantProb + '%・交易 ' + SET.tradeSeconds + ' 秒',
       '精靈 ' + SET.fairyProb + '%', '每 ' + SET.cardEvery + ' 關用一次魔法卡（每人 ' + SET.cardSeconds + ' 秒）', WQSettings.REPEAT_NAMES[SET.repeat]].forEach(function (t) { if (t) chips.appendChild(el('span', '', t)); });
     right.appendChild(chips);
     if (G.resume) {
@@ -256,7 +256,7 @@
     G.qi++; var it = G.seq[G.qi]; G.phase = 'question'; G.q = { ms: 0, order: [] }; G.mask = true; G.ov = {};
     var rk = ranked(); list().forEach(function (p) { p.rankBefore = rk.indexOf(p) + 1; p.cur = freshCur(p); });
     var fs = WQSettings.forcedSeconds(it.o.q);
-    if (fs) startTimer('q', fs * 1000); else if (SET.qTimer) startTimer('q', SET.qSeconds * 1000); else G.timer = null;
+    if (SET.qTimer) startTimer('q', (fs || SET.qSeconds) * 1000); else G.timer = null; // 關閉時所有題型都不倒數
     setBg(G.rooms[it.ri].bg); render(); push(); WQSfx.play('open');
     checkAllDone();
   }

@@ -147,8 +147,37 @@
   });
   $('btn-start').addEventListener('click', function () {
     audioOn(); play('tap'); if (narration) try { narration.pause(); } catch (e) {}
-    setupAdventure(); reset(); storyStep = 0; renderStory(); show('screen-story');
+    setupAdventure(); reset();
+    needPin(function () { storyStep = 0; renderStory(); show('screen-story'); });
   });
+
+  /* ---------- 老師核對密碼：有手寫、造句等要老師批改的題目時，開始前先請老師設定 ---------- */
+  var PIN = null; // 只存雜湊值
+  function pinHash(v) { var h = 5381, s = 'wq-pin:' + v; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); }
+  function teacherQs() { var n = 0; ROOMS.forEach(function (r) { r.objects.forEach(function (o) { if (WQSettings.needsTeacher(o.q)) n++; }); }); return n; }
+  function askPin(mode, msg, ok, cancel) {
+    var ov = $('pin-ov'), a = $('pin-in'), b = $('pin-in2'), er = $('pin-err');
+    $('pin-title').textContent = mode === 'set' ? '🔒 請老師設定核對密碼' : '🔒 老師批改：請輸入核對密碼';
+    $('pin-msg').textContent = msg; a.value = b.value = ''; er.textContent = ''; b.style.display = mode === 'set' ? '' : 'none';
+    $('pin-cancel').style.display = cancel ? '' : 'none';
+    ov.classList.remove('hidden'); setTimeout(function () { try { a.focus(); } catch (e) {} }, 100);
+    function clean(x) { x.value = x.value.replace(/[^0-9]/g, '').slice(0, 8); }
+    a.oninput = function () { clean(a); }; b.oninput = function () { clean(b); };
+    a.onkeydown = b.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') $('pin-ok').click(); };
+    $('pin-ok').onclick = function () {
+      var v = a.value;
+      if (v.length < 4) { er.textContent = '密碼要 4～8 位數字。'; return; }
+      if (mode === 'set') { if (b.value !== v) { er.textContent = '兩次輸入的密碼不一樣，請再輸入一次。'; b.value = ''; return; } PIN = pinHash(v); }
+      else if (pinHash(v) !== PIN) { er.textContent = '密碼不對，請老師再輸入一次。'; a.value = ''; play('wrong'); return; }
+      ov.classList.add('hidden'); play('tap'); ok();
+    };
+    $('pin-cancel').onclick = function () { ov.classList.add('hidden'); if (cancel) cancel(); };
+  }
+  function needPin(go) {
+    var n = teacherQs(); if (!n || PIN) return go();
+    askPin('set', '這次冒險有 ' + n + ' 題手寫或造句題，要由老師批改對錯。請老師設定一組 4～8 位數字的密碼（不要讓學生看到），之後按「老師批改」時要輸入這組密碼。請記住這組密碼，存檔後讀檔也會沿用。', go);
+  }
+  function gradeGate() { if (!PIN) return openGrade(); askPin('check', '只有老師可以批改。請輸入開始冒險時設定的核對密碼。', openGrade, function () {}); }
 
   /* ---------- 故事 ---------- */
   var storyStep = 0;
@@ -437,7 +466,7 @@
     ov.classList.remove('hidden');
   }
   function afterGrade() { updGrade(); openGrade(); if (S.ended) endGame(true); }
-  $('btn-grade').addEventListener('click', openGrade);
+  $('btn-grade').addEventListener('click', gradeGate);
   $('grade-close').addEventListener('click', function () { play('tap'); $('grade-ov').classList.add('hidden'); });
 
   /* 每題作答時限 */
@@ -446,7 +475,7 @@
   function startQTimer() {
     stopQTimer();
     var o = cur && cur.kind === 'q' ? ROOMS[S.room].objects[cur.j] : null, secs = o ? WQSettings.forcedSeconds(o.q) : 0;
-    if (!secs && !SET.qTimer) return; secs = secs || SET.qSeconds;
+    if (!SET.qTimer) return; secs = secs || SET.qSeconds; // 每題作答時限關閉時，所有題型都不倒數
     var end = Date.now() + secs * 1000, bar = el('div', 'qtimer'), fill = el('i'), txt = el('span');
     bar.id = 'm-timer'; bar.appendChild(fill); bar.appendChild(txt); $('m-prompt').parentNode.insertBefore(bar, $('m-prompt'));
     $('m-close').classList.add('hidden');
@@ -710,11 +739,11 @@
     updGrade(); if (again) return;
     show('screen-end'); sparks(innerWidth / 2, innerHeight / 3, 50); play('rune');
   }
-  $('end-grade-btn').addEventListener('click', openGrade);
-  $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0); });
+  $('end-grade-btn').addEventListener('click', gradeGate);
+  $('btn-restart').addEventListener('click', function () { audioOn(); play('tap'); setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; needPin(function () { show('screen-play'); enterRoom(0); }); });
   $('btn-another').addEventListener('click', function () {
     audioOn(); play('tap'); if (ULTIMATE) WQSettings.saveUsed(C, []);
-    setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; show('screen-play'); enterRoom(0);
+    setupAdventure(); reset(); S.shown = 0; $('score').textContent = '0'; needPin(function () { show('screen-play'); enterRoom(0); });
   });
 
   /* ---------- 線索本 ---------- */
@@ -744,7 +773,7 @@
     play('tap');
     var st = JSON.parse(JSON.stringify(S, function (k, v) { return k === 'ink' ? undefined : v; }));
     st.elapsed = Date.now() - S.start;
-    var ok = WQSettings.saveFile({ kind: 'solo', content: C, set: SET, adv: ADV, rooms: ROOMS, picks: PICKS, ultimate: ULTIMATE, state: st }, (C.titleMain || '午夜12點') + '_單人存檔');
+    var ok = WQSettings.saveFile({ kind: 'solo', content: C, set: SET, adv: ADV, rooms: ROOMS, picks: PICKS, ultimate: ULTIMATE, pin: PIN, state: st }, (C.titleMain || '午夜12點') + '_單人存檔');
     if (ok) say('存檔完成！記錄檔已下載到這台電腦。下次在首頁按「再續前緣」上傳，就能從這裡接著玩。', 6000);
   });
   $('btn-load').addEventListener('click', function () { audioOn(); play('tap'); $('load-file').click(); });
@@ -758,11 +787,14 @@
       $('score').textContent = S.score; onboarded = true; cur = null;
       if (S.pending.some(function (it) { return it.v && typeof it.v === 'object'; }))
         WQSettings.loadInk().then(function (ink) { S.pending.forEach(function (it) { if (it.v && typeof it.v === 'object') it.ink = ink; }); }).catch(function () {});
-      updGrade(); show('screen-play');
-      if (S.inGate) enterGate();
-      else if (S.puzzleDone[S.room]) { if (S.room < ROOMS.length - 1) enterRoom(S.room + 1); else enterGate(); }
-      else enterRoom(S.room);
-      say('讀檔完成！歡迎回到古堡，接著冒險吧！', 4000);
+      PIN = d.pin || null;
+      needPin(function () {
+        updGrade(); show('screen-play');
+        if (S.inGate) enterGate();
+        else if (S.puzzleDone[S.room]) { if (S.room < ROOMS.length - 1) enterRoom(S.room + 1); else enterGate(); }
+        else enterRoom(S.room);
+        say('讀檔完成！歡迎回到古堡，接著冒險吧！', 4000);
+      });
     });
   });
 
