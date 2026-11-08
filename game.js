@@ -74,7 +74,7 @@
   }
   var SFX = { door: new Audio('audio/door.mp3'), meow: new Audio('audio/meow.mp3') };
   function sfx(k, vol) { var a = SFX[k]; if (!a) return; try { a.currentTime = 0; a.volume = vol || .8; var p = a.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
-  var narration = C.__custom ? null : new Audio('audio/intro.mp3');
+  var narration = null; // 原本的錄音唸的是舊說明（語詞咒語），改用語音朗讀畫面上的說明文字，內容永遠和文字一樣
 
   /* ---------- 預先載入圖片 ---------- */
   (function () {
@@ -138,7 +138,8 @@
   }
   $('btn-speak').addEventListener('click', function () {
     if (narration) { try { narration.currentTime = 0; narration.play(); } catch (e) {} return; }
-    if ('speechSynthesis' in window) { var u = new SpeechSynthesisUtterance(C.instruction || ''); u.lang = 'zh-TW'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+    if ('speechSynthesis' in window) { var u = new SpeechSynthesisUtterance(C.instruction || ''); u.lang = 'zh-TW'; u.rate = .95;
+      var vs = speechSynthesis.getVoices().filter(function (v) { return /zh[-_]TW/i.test(v.lang); }); if (vs.length) u.voice = vs.filter(function (v) { return /Mei|美佳|Hanhan|Yating|Google/i.test(v.name); })[0] || vs[0]; speechSynthesis.cancel(); speechSynthesis.speak(u); }
   });
   $('btn-start').addEventListener('click', function () {
     audioOn(); play('tap'); if (narration) try { narration.pause(); } catch (e) {}
